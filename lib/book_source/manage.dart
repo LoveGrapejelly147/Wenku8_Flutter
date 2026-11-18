@@ -170,12 +170,28 @@ Future<BookSourceCheck> checkBookSource(
   try {
     final books = await engine.search(source, keyword, identify: (_, _) => 0);
     if (books.isEmpty) return result(BookSourceCheckStatus.empty, '搜索没有结果');
+    var book = books.first;
+    if (_hasRule(source.info)) {
+      book = await engine.detail(source, book);
+    }
+    if (source.toc['chapterList'].trim().isNotEmpty) {
+      book = await engine.toc(source, book);
+      final readable =
+          source.content['content'].trim().isNotEmpty ||
+          source.content['sourceRegex'].trim().isNotEmpty;
+      if (readable && book.chapters.isNotEmpty) {
+        await engine.content(source, book, book.chapters.first);
+      }
+    }
     return result(BookSourceCheckStatus.ok, '搜到 ${books.length} 本');
   } catch (error) {
     final message = error is FormatException ? error.message : '校验失败';
     return result(BookSourceCheckStatus.failed, message);
   }
 }
+
+bool _hasRule(BookSourceRules rules) =>
+    rules.values.values.any((rule) => rule.trim().isNotEmpty);
 
 Future<List<BookSourceCheck>> checkBookSources(
   BookSourceEngine engine,

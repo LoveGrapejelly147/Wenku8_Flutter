@@ -152,4 +152,33 @@ void main() {
     expect(loaded.sources.first.group, '精校');
     expect(loaded.checks['https://c.example/search']?.elapsedMs, 12);
   });
+
+  test('a full check continues from search through chapter text', () async {
+    final engine = BookSourceEngine(
+      fetch: (BookSourceRequestSpec request) async {
+        final body = request.url.endsWith('/chapter')
+            ? '<article>正文</article>'
+            : request.url.contains('/book')
+            ? '<a href="/chapter">第一章</a>'
+            : '<a href="/book">书</a>';
+        return BookSourceResponse(url: request.url, body: body, status: 200);
+      },
+    );
+    final checks = await checkBookSources(engine, [
+      const BookSource(
+        url: 'https://full.example',
+        name: '完整',
+        searchUrl: 'https://full.example/s?q={{key}}',
+        search: BookSourceRules({'name': 'a@text', 'bookUrl': 'a@href'}),
+        info: BookSourceRules({'name': 'a@text'}),
+        toc: BookSourceRules({
+          'chapterList': 'body',
+          'chapterName': 'a@text',
+          'chapterUrl': 'a@href',
+        }),
+        content: BookSourceRules({'content': 'article@text'}),
+      ),
+    ]);
+    expect(checks.single.status, BookSourceCheckStatus.ok);
+  });
 }
