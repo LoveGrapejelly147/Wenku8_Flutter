@@ -23,12 +23,12 @@ static jstring legado_jstring(JNIEnv *env, const char *text) {
 
 char *legado_ajax(const char *url, const char *method, const char *body, const char *cookie) {
     JavaVM *java = legado_vm();
-    if (!java) return strdup("\x1eERR\x1e无法连接 Android 网络");
+    if (!java) return strdup("\x1e" "ERR" "\x1e" "无法连接 Android 网络");
     JNIEnv *env = NULL;
     int detach = 0;
     if ((*java)->GetEnv(java, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
         if ((*java)->AttachCurrentThread(java, &env, NULL) != JNI_OK) {
-            return strdup("\x1eERR\x1e无法连接 Android 网络");
+            return strdup("\x1e" "ERR" "\x1e" "无法连接 Android 网络");
         }
         detach = 1;
     }
@@ -39,7 +39,7 @@ char *legado_ajax(const char *url, const char *method, const char *body, const c
     if ((*env)->ExceptionCheck(env)) {
         (*env)->ExceptionClear(env);
         if (detach) (*java)->DetachCurrentThread(java);
-        return strdup("\x1eERR\x1ejava.ajax 地址无效");
+        return strdup("\x1e" "ERR" "\x1e" "java.ajax 地址无效");
     }
     jmethodID open = (*env)->GetMethodID(env, urlClass, "openConnection", "()Ljava/net/URLConnection;");
     jobject connection = (*env)->CallObjectMethod(env, urlObject, open);
