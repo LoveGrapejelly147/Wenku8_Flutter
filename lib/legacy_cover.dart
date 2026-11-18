@@ -1,13 +1,29 @@
 import 'dart:async';
 
 import 'dart:typed_data';
+import 'book_identity.dart';
+import 'book_source/http.dart';
 import 'online_component.dart';
 
 /// Bounded cover cache. Source previews use local seeds only.
 abstract final class LegacyCover {
   static final _cache = LegacyCoverCache(request: (_) => unavailableOnline());
-  static Uint8List? peek(int aid, {String? url}) => _cache.peek(aid);
-  static Future<Uint8List> bytes(int aid, {String? url}) => _cache.load(aid);
+  static final _direct = _DirectCoverCache();
+  static Uint8List? peek(int aid, {String? url}) =>
+      isCustomSourceBook(aid) ? _direct.peek(aid) : _cache.peek(aid);
+  static Future<Uint8List> bytes(int aid, {String? url}) {
+    if (isCustomSourceBook(aid) && url != null && _httpCover(url)) {
+      return _direct.load(aid, url);
+    }
+    return _cache.load(aid);
+  }
+
+  static bool _httpCover(String url) {
+    final uri = Uri.tryParse(url);
+    return uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
+  }
 
   /// Explicit local fixtures never query a remote cover endpoint.
   static void seedLocalBytes(int aid, Uint8List bytes) =>
@@ -107,4 +123,27 @@ class _CoverEntry {
   const _CoverEntry(this.bytes, this.future);
   final Uint8List bytes;
   final Future<Uint8List> future;
+}
+
+/// Custom-source covers are ordinary http images, keyed by the stable book id.
+class _DirectCoverCache {
+  final _bytes = <int, Uint8List>{};
+  final _pending = <int, Future<Uint8List>>{};
+
+  Uint8List? peek(int id) => _bytes[id];
+
+  Future<Uint8List> load(int id, String url) {
+    final cached = _bytes[id];
+    if (cached != null) return Future<Uint8List>.value(cached);
+    return _pending[id] ??= () async {
+      try {
+        final bytes = await BookSourceHttp.shared.getBytes(url);
+        if (bytes.isEmpty) throw const FormatException('封面为空');
+        _bytes[id] = bytes;
+        return bytes;
+      } finally {
+        _pending.remove(id);
+      }
+    }();
+  }
 }

@@ -40,7 +40,7 @@ Milky glass, editorial typography, and a three-dimensional bookshelf. Discover a
 >
 > **The app is entirely free.** We do not sell memberships, activation codes, or feature unlocks. Please beware of anyone charging for access in the name of this project or its developer.
 >
-> **Only Wenku8 and local imports are supported. Other sources and custom book sources are no longer supported.** The app supports Android, iOS, and HarmonyOS and is not an official Wenku8 app.
+> **Wenku8, local imports, and—on Android—custom book sources compatible with Legado are supported.** Custom sources are added by the user. The app does not bundle third-party sources or republish their content. The app supports Android, iOS, and HarmonyOS and is not an official Wenku8 app.
 
 ## A look inside
 
@@ -92,6 +92,12 @@ Import through OpenList/WebDAV or Quark Drive (experimental). Access OneDrive, G
 [Cloud import guide (Chinese) →](docs/CLOUD_IMPORT.md)
 
 </details>
+
+## Custom book sources (Android)
+
+**Settings → Book sources (设置 → 书源)** imports, creates, edits, enables, and deletes sources. JSON can be pasted, opened from a file, or downloaded from a URL, then exported in the [Legado](https://github.com/gedoor/legado) book-source format.
+
+Supported rules include CSS (`@css:` and the usual `tag.class.index@text` form), XPath (`@XPath:` or a leading `//`), JSONPath (`@json:` or a leading `$.`), `##regex##replacement`, and `{{key}}` / `{{page}}` URL templates, including POST, charset, and headers. JavaScript rules (`<js>`, `@js:`) are reported as unsupported instead of being run. Wenku8 stays the built-in source. Local books, the shelf, progress, offline cache, and read-aloud keep their existing path. Each source has a debug page that runs search, details, contents, and chapter text.
 
 ## Pick up where you left off
 

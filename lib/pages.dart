@@ -37,6 +37,8 @@ import 'book_collection_grid.dart';
 import 'book_grid_density.dart';
 import 'book_categories.dart';
 import 'bookshelf_scope.dart';
+import 'book_source/pages.dart';
+import 'book_source/repository.dart';
 import 'book_source_badge.dart';
 import 'book_search.dart';
 import 'blocked_tags_controls.dart';
@@ -3042,6 +3044,24 @@ class SettingsPage extends StatelessWidget {
           MediaQuery.paddingOf(context).bottom + 120,
         ),
         children: [
+          if (bookSourceRepositoryOf(repository) case final sources?) ...[
+            FeatureEntry(
+              key: const ValueKey('settings-book-sources'),
+              title: '书源',
+              subtitle: '导入、编辑、启用和调试自定义书源',
+              icon: CupertinoIcons.book,
+              onTap: () => pushNovelPage<void>(
+                context,
+                BookSourceListPage(
+                  repository: sources,
+                  reduceMotion: state.reduceMotion,
+                ),
+                reduceMotion: state.reduceMotion,
+                slot: ('settings', 'book-sources'),
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
           _sectionEntry(
             context,
             id: 'usage',

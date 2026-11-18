@@ -40,7 +40,7 @@
 >
 > **本应用完全免费。** 不出售会员、激活码或功能解锁服务。请勿向以本项目或开发者名义收费解锁功能的第三方付款。
 >
-> **仅支持轻小说文库及本地导入，不再支持其他源或自定义书源。** 支持 Android、iOS 与 HarmonyOS，并非轻小说文库网站的官方应用。
+> **支持轻小说文库、本地导入，以及在 Android 上导入兼容开源阅读（Legado）的自定义书源。** 自定义书源由用户自行添加，应用不内置第三方书源，也不代为发布其内容。支持 Android、iOS 与 HarmonyOS，并非轻小说文库网站的官方应用。
 
 ## 界面一览
 
@@ -92,6 +92,18 @@
 [网盘导入指南 →](docs/CLOUD_IMPORT.md)
 
 </details>
+
+## 自定义书源（Android）
+
+在「设置 → 书源」导入、新建、编辑、启用或删除书源，也可以从 JSON 文本、本地文件或 URL 导入，并导出为开源阅读（[Legado](https://github.com/gedoor/legado)）书源 JSON。
+
+已保存的常用字段包括 `bookSourceUrl`、`bookSourceName`、`bookSourceGroup`、`searchUrl`、`header`、`ruleSearch`、`ruleBookInfo`、`ruleToc`、`ruleContent`、`exploreUrl` / `ruleExplore`。搜索地址支持 `{{key}}`、`{{page}}`、`{{page-1}}` 以及 POST、`charset` 和 `headers`。
+
+规则支持 CSS（`@css:`，以及 `.class`、`tag.li.0@text` 这类默认写法）、XPath（`@XPath:` 或以 `//` 开头）、JSONPath（`@json:` 或以 `$.` 开头）和 `##正则##替换`。`<js>`、`@js:` 与 `{{ }}` 脚本不会执行，调试和阅读时会提示不支持。轻小说文库仍是内置书源；本地书、书架、进度、离线缓存和朗读沿用原来的流程。单个书源可以在调试页用关键字依次查看搜索、详情、目录和正文。规则测试：
+
+```bash
+flutter test --no-test-assets test/book_source_rule_test.dart test/book_source_repository_test.dart
+```
 
 ## 读到哪里，都能接着读
 
