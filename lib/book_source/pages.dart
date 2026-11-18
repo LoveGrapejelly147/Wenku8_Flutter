@@ -9,6 +9,7 @@ import '../app_ui.dart';
 import '../feature_pages.dart';
 import '../local_platform.dart';
 import 'engine.dart';
+import 'js_runtime.dart';
 import 'http.dart';
 import 'manage_page.dart';
 import 'model.dart';
@@ -273,6 +274,7 @@ class _BookSourceEditPageState extends State<BookSourceEditPage> {
         ),
   };
   late bool _enabled = widget.source.enabled;
+  late bool _explore = widget.source.enabledExplore;
   String? _error;
   bool _saving = false;
 
@@ -311,7 +313,9 @@ class _BookSourceEditPageState extends State<BookSourceEditPage> {
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),
-        _switch(),
+        _switch('启用', _enabled, (value) => setState(() => _enabled = value)),
+        const SizedBox(height: 8),
+        _switch('发现', _explore, (value) => setState(() => _explore = value)),
         const SizedBox(height: 12),
         _field('名称', 'name'),
         _field('地址', 'url', hint: 'https://example.com'),
@@ -328,7 +332,7 @@ class _BookSourceEditPageState extends State<BookSourceEditPage> {
         _field('发现地址', 'exploreUrl', maxLines: 2),
         const SizedBox(height: 8),
         const AppText(
-          'JavaScript 规则（<js>、@js:）不会执行。调试时会提示不支持，而不会中断应用。',
+          'Android 上会执行 <js>、@js: 和 {{ }}。不支持的 Java 方法会在调试页提示，不会让应用退出。',
           style: TextStyle(fontSize: 12, height: 1.5),
         ),
         for (final entry in _ruleFields.entries) ...[
@@ -347,19 +351,20 @@ class _BookSourceEditPageState extends State<BookSourceEditPage> {
     ),
   );
 
-  Widget _switch() => ContentPanel(
-    child: Row(
-      children: [
-        const Expanded(
-          child: AppText('启用', style: TextStyle(fontWeight: FontWeight.w600)),
+  Widget _switch(String label, bool value, ValueChanged<bool> onChanged) =>
+      ContentPanel(
+        child: Row(
+          children: [
+            Expanded(
+              child: AppText(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+            Switch.adaptive(value: value, onChanged: onChanged),
+          ],
         ),
-        Switch.adaptive(
-          value: _enabled,
-          onChanged: (value) => setState(() => _enabled = value),
-        ),
-      ],
-    ),
-  );
+      );
 
   Widget _field(String label, String key, {int maxLines = 1, String? hint}) =>
       Padding(
@@ -383,6 +388,7 @@ class _BookSourceEditPageState extends State<BookSourceEditPage> {
       group: _fields['group']!.text.trim(),
       comment: _fields['comment']!.text.trim(),
       enabled: _enabled,
+      enabledExplore: _explore,
       searchUrl: _fields['searchUrl']!.text.trim(),
       exploreUrl: _fields['exploreUrl']!.text.trim(),
       header: _fields['header']!.text.trim(),
@@ -462,7 +468,11 @@ class BookSourceDebugPage extends StatefulWidget {
 
 class _BookSourceDebugPageState extends State<BookSourceDebugPage> {
   final _keyword = TextEditingController();
-  late final BookSourceEngine _engine = widget.engine ?? BookSourceEngine();
+  late final BookSourceEngine _engine =
+      widget.engine ??
+      BookSourceEngine(
+        scripts: LocalPlatform.android ? BookSourceScripts() : null,
+      );
   List<CustomBookRecord> _results = const [];
   CustomBookRecord? _book;
   String? _content;

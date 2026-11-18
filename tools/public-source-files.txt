@@ -27,6 +27,7 @@ android/app/src/main/AndroidManifest.xml
 android/app/src/main/cpp/CMakeLists.txt
 android/app/src/main/cpp/mobi_export.c
 android/app/src/main/cpp/mobi_jni.c
+android/app/src/main/cpp/legado_ajax.c
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/AppHapticsPlugin.kt
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/AppUpdatePlugin.kt
 android/app/src/main/kotlin/org/mewx/wenku8_flutter/BookDocumentInput.kt
@@ -415,6 +416,10 @@ lib/book_shelf_preferences.dart
 lib/book_source/charset.dart
 lib/book_source/content_text.dart
 lib/book_source/engine.dart
+lib/book_source/explore.dart
+lib/book_source/explore_page.dart
+lib/book_source/js_http.dart
+lib/book_source/js_runtime.dart
 lib/book_source/http.dart
 lib/book_source/manage.dart
 lib/book_source/manage_page.dart
@@ -767,6 +772,7 @@ scripts/sync_reading_widget_seasons.py
 shaders/analytic_glass.frag
 shaders/continuous_blur.frag
 shaders/glass_shape.glsl
+test/book_source_explore_js_test.dart
 test/book_source_aggregate_test.dart
 test/book_source_manage_test.dart
 test/book_source_repository_test.dart

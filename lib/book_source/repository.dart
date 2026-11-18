@@ -7,7 +7,9 @@ import '../offline_repository.dart';
 import '../online_component.dart';
 import '../publication_catalog.dart';
 import '../tag_catalogue.dart';
+import '../local_platform.dart';
 import 'engine.dart';
+import 'js_runtime.dart';
 import 'model.dart';
 import 'store.dart';
 import 'url_template.dart';
@@ -20,7 +22,11 @@ class BookSourceRepository extends NovelRepository
     required this.primary,
     required this.store,
     BookSourceEngine? engine,
-  }) : engine = engine ?? BookSourceEngine();
+  }) : engine =
+           engine ??
+           BookSourceEngine(
+             scripts: LocalPlatform.android ? BookSourceScripts() : null,
+           );
 
   final NovelRepository primary;
   final BookSourceStore store;

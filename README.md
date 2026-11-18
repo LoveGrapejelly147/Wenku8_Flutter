@@ -99,6 +99,8 @@ Import through OpenList/WebDAV or Quark Drive (experimental). Access OneDrive, G
 
 The search page can query every enabled source and the built-in library together. Results with the same title and author are merged, with a source count that expands to the individual hits. The search can be limited to one group or one source, uses a configurable concurrency and per-source timeout, keeps going when a source fails, and can be stopped. Book details and the reader can switch a book to another source and keep the reading position when a chapter title matches.
 
+Discovery keeps the built-in library and, on Android, adds explore categories from enabled sources. `exploreUrl` accepts `name::url`, `&&`, and JSON `{title,url}`. Lists use `ruleExplore`, falling back to `ruleSearch`, and `{{page}}` turns pages. A source can turn discovery off without being disabled. QuickJS runs `<js>`, `@js:`, `{{expressions}}`, URL scripts and `jsLib`, with an 8 second timeout.
+
 Supported rules include CSS (`@css:` and the usual `tag.class.index@text` form), XPath (`@XPath:` or a leading `//`), JSONPath (`@json:` or a leading `$.`), `##regex##replacement`, and `{{key}}` / `{{page}}` URL templates, including POST, charset, and headers. JavaScript rules (`<js>`, `@js:`) are reported as unsupported instead of being run. Wenku8 stays the built-in source. Local books, the shelf, progress, offline cache, and read-aloud keep their existing path. Each source has a debug page that runs search, details, contents, and chapter text. **Settings → Rules (设置 → 规则)** also holds TXT chapter patterns, text replacement, and online dictionary lookups.
 
 ## Pick up where you left off

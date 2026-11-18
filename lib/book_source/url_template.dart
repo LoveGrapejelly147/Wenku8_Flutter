@@ -32,9 +32,18 @@ String fillBookSourceTemplate(
   required String key,
   required int page,
   TemplateEncode encode = TemplateEncode.query,
+  String Function(String expression)? script,
 }) {
   return input.replaceAllMapped(_template, (match) {
     final expr = match.group(1)!.trim();
+    if (script != null &&
+        expr != 'key' &&
+        expr != 'searchKey' &&
+        expr != 'keyword' &&
+        expr != 'page' &&
+        _pageMath.firstMatch(expr) == null) {
+      return script(expr);
+    }
     if (expr.contains(';') ||
         expr.contains('java.') ||
         expr.startsWith('@') ||
@@ -136,6 +145,7 @@ List<BookSourceRequestSpec> parseSearchRequests({
   required Map<String, String> sourceHeaders,
   required String key,
   required int page,
+  String Function(String expression)? script,
 }) {
   final targets = _splitTargets(searchUrl);
   if (targets.isEmpty) {
@@ -149,6 +159,7 @@ List<BookSourceRequestSpec> parseSearchRequests({
         sourceHeaders: sourceHeaders,
         key: key,
         page: page,
+        script: script,
       ),
   ];
 }
@@ -188,6 +199,7 @@ BookSourceRequestSpec _oneRequest(
   required Map<String, String> sourceHeaders,
   required String key,
   required int page,
+  String Function(String expression)? script,
 }) {
   String url;
   var method = 'GET';
@@ -224,10 +236,17 @@ BookSourceRequestSpec _oneRequest(
     key: key,
     page: page,
     encode: TemplateEncode.query,
+    script: script,
   );
   final filledBody = body == null
       ? null
-      : fillBookSourceTemplate(body, key: key, page: page, encode: bodyEncode);
+      : fillBookSourceTemplate(
+          body,
+          key: key,
+          page: page,
+          encode: bodyEncode,
+          script: script,
+        );
   final resolved = resolveBookSourceUrl(
     sourceUrl,
     filledUrl.isEmpty ? sourceUrl : filledUrl,

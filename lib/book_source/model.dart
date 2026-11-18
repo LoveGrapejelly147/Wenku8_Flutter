@@ -21,6 +21,7 @@ class BookSource {
     this.header = '',
     this.loginUrl = '',
     this.bookUrlPattern = '',
+    this.jsLib = '',
     this.search = const BookSourceRules({}),
     this.explore = const BookSourceRules({}),
     this.info = const BookSourceRules({}),
@@ -43,6 +44,7 @@ class BookSource {
   final String header;
   final String loginUrl;
   final String bookUrlPattern;
+  final String jsLib;
   final BookSourceRules search;
   final BookSourceRules explore;
   final BookSourceRules info;
@@ -69,6 +71,7 @@ class BookSource {
     String? header,
     String? loginUrl,
     String? bookUrlPattern,
+    String? jsLib,
     BookSourceRules? search,
     BookSourceRules? explore,
     BookSourceRules? info,
@@ -90,6 +93,7 @@ class BookSource {
     header: header ?? this.header,
     loginUrl: loginUrl ?? this.loginUrl,
     bookUrlPattern: bookUrlPattern ?? this.bookUrlPattern,
+    jsLib: jsLib ?? this.jsLib,
     search: search ?? this.search,
     explore: explore ?? this.explore,
     info: info ?? this.info,
@@ -123,6 +127,7 @@ class BookSource {
       header: _headerText(json['header']),
       loginUrl: _text(json['loginUrl']),
       bookUrlPattern: _text(json['bookUrlPattern']),
+      jsLib: _text(json['jsLib']),
       search: BookSourceRules.from(json['ruleSearch']),
       explore: BookSourceRules.from(json['ruleExplore']),
       info: BookSourceRules.from(json['ruleBookInfo']),
@@ -138,6 +143,7 @@ class BookSource {
     'bookSourceComment': comment,
     'bookSourceType': type,
     'bookUrlPattern': bookUrlPattern,
+    if (jsLib.isNotEmpty) 'jsLib': jsLib,
     'customOrder': order,
     'enabled': enabled,
     'enabledExplore': enabledExplore,

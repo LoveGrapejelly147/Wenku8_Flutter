@@ -37,6 +37,7 @@ import 'book_collection_grid.dart';
 import 'book_grid_density.dart';
 import 'book_categories.dart';
 import 'bookshelf_scope.dart';
+import 'book_source/explore_page.dart';
 import 'book_source/aggregate.dart';
 import 'book_source/aggregate_page.dart';
 import 'book_source/pages.dart';
@@ -1144,7 +1145,14 @@ class DiscoverPage extends StatelessWidget {
               24,
               0,
             ),
-            child: _categoryHeader(context),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _categoryHeader(context),
+                const SizedBox(height: 12),
+                _sourceDiscover(context),
+              ],
+            ),
           ),
           Expanded(
             child: ContentNotice(
@@ -1224,6 +1232,7 @@ class DiscoverPage extends StatelessWidget {
                     children: [
                       _categoryHeader(context),
                       const SizedBox(height: 14),
+                      _sourceDiscover(context),
                       if (featuredCount > 0) ...[
                         ArchiveFileCarousel(
                           key: ValueKey((
@@ -1373,6 +1382,18 @@ class DiscoverPage extends StatelessWidget {
         enabled: compactMainPageControls,
         child: body,
       ),
+    );
+  }
+
+  Widget _sourceDiscover(BuildContext context) {
+    final sources = bookSourceRepositoryOf(repository);
+    if (!LocalPlatform.android || sources == null) {
+      return const SizedBox.shrink();
+    }
+    return BookSourceDiscoverSection(
+      repository: sources,
+      reduceMotion: state.reduceMotion,
+      onOpen: (novel) => openDetail(context, novel, state, repository),
     );
   }
 

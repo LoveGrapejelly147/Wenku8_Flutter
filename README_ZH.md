@@ -99,6 +99,10 @@
 
 搜索页的聚合搜索会同时查询已启用书源和内置文库。结果按书名和作者合并，并显示来源数量，展开后可以打开某一个书源的结果。范围可以是全部分组、某一个分组或单个书源。并发数和单源超时可以调整；失败的书源只计入失败数，搜索过程中可以停止。书详情和阅读器里的「换源」会查找同名书，并按章节标题尽量保留阅读进度。书架上的书会改挂到新书源。
 
+发现页在内置文库下面按书源分组显示发现分类。只列出已启用、并且打开了发现的书源。分类来自 `exploreUrl`（`名称::URL`、`&&` 或多行，以及含 `title` / `url` 的 JSON 数组）。列表用 `ruleExplore` 解析，没有发现规则时回退到 `ruleSearch`，地址里的 `{{page}}` 可以翻页。书源编辑页和列表里的指南针可以单独关闭发现。
+
+Android 上使用 QuickJS 执行 `<js>`、`@js:`、规则里的 `{{表达式}}`、搜索/发现地址中的 JS，以及书源 `jsLib`。单次执行默认 8 秒超时。可用变量有 `result`、`baseUrl`、`book`、`chapter`、`key`、`page`。已接上的 Java 桥接：`java.ajax`、`java.get` / `java.put`、`java.base64Encode` / `java.base64Decode`、`java.md5Encode`、`java.timeFormat`、`java.getString` / `java.getElements`、`java.getCookie` / `java.setCookie`、`java.log`、`cookie.get` / `cookie.getKey` / `cookie.put`、`source.getKey` / `source.getVariable` / `source.setVariable`。`java.webView`、`java.startBrowser`、`java.toast`、文件缓存和 Android 界面方法会抛出「不支持的 Java 方法」，调试页能看到这句话。
+
 已保存的常用字段包括 `bookSourceUrl`、`bookSourceName`、`bookSourceGroup`、`searchUrl`、`header`、`ruleSearch`、`ruleBookInfo`、`ruleToc`、`ruleContent`、`exploreUrl` / `ruleExplore`。搜索地址支持 `{{key}}`、`{{page}}`、`{{page-1}}` 以及 POST、`charset` 和 `headers`。
 
 规则支持 CSS（`@css:`，以及 `.class`、`tag.li.0@text` 这类默认写法）、XPath（`@XPath:` 或以 `//` 开头）、JSONPath（`@json:` 或以 `$.` 开头）和 `##正则##替换`。`<js>`、`@js:` 与 `{{ }}` 脚本不会执行，调试和阅读时会提示不支持。轻小说文库仍是内置书源；本地书、书架、进度、离线缓存和朗读沿用原来的流程。设置 → 规则里还有三类规则，都在 Android 上可用：TXT 目录规则会在导入本地 TXT 时自动匹配，也可在本地书详情里换规则重新切分；替换净化作用于正文或标题，范围可以是全部、书名或书源，阅读器里可以一键开关，朗读使用净化后的文本；在线查词按 `urlRule` / `showRule` 查询，和离线词典一起显示。三类规则都兼容开源阅读的 JSON 导入导出。
@@ -106,7 +110,7 @@
 单个书源可以在调试页用关键字依次查看搜索、详情、目录和正文。规则测试：
 
 ```bash
-flutter test --no-test-assets test/book_source_rule_test.dart test/book_source_repository_test.dart test/book_source_manage_test.dart test/book_source_aggregate_test.dart test/reading_rules_test.dart
+flutter test --no-test-assets test/book_source_rule_test.dart test/book_source_repository_test.dart test/book_source_manage_test.dart test/book_source_aggregate_test.dart test/book_source_explore_js_test.dart test/reading_rules_test.dart
 ```
 
 ## 读到哪里，都能接着读

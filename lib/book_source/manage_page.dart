@@ -265,6 +265,20 @@ class _BookSourceManagerState extends State<BookSourceManager> {
               value: source.enabled,
               onChanged: (value) => widget.store.setEnabled(source.url, value),
             ),
+            IconButton(
+              tooltip: source.enabledExplore ? '关闭发现' : '打开发现',
+              onPressed: () {
+                widget.store.save(
+                  source.copyWith(enabledExplore: !source.enabledExplore),
+                );
+              },
+              icon: Icon(
+                source.enabledExplore
+                    ? CupertinoIcons.compass_fill
+                    : CupertinoIcons.compass,
+                size: 18,
+              ),
+            ),
           ],
         ),
       ),
@@ -386,7 +400,9 @@ class _BookSourceManagerState extends State<BookSourceManager> {
                   GlassTextButton(
                     onPressed: () async {
                       final next = await _ask(sheet, group);
-                      if (next == null || next.trim().isEmpty || next == group) {
+                      if (next == null ||
+                          next.trim().isEmpty ||
+                          next == group) {
                         return;
                       }
                       await widget.store.renameGroup(group, next.trim());

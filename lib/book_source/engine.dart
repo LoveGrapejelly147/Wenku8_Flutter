@@ -1,17 +1,20 @@
 import 'content_text.dart';
+import 'explore.dart';
 import 'http.dart';
+import 'js_runtime.dart';
 import 'model.dart';
 import 'rule_engine.dart';
 import 'url_template.dart';
 
 /// Runs search, detail, directory and chapter rules for one text source.
 class BookSourceEngine {
-  BookSourceEngine({RuleEngine? rules, BookSourceFetcher? fetch})
+  BookSourceEngine({RuleEngine? rules, BookSourceFetcher? fetch, this.scripts})
     : rules = rules ?? const RuleEngine(),
       fetch = fetch ?? BookSourceHttp.shared.send;
 
   final RuleEngine rules;
   final BookSourceFetcher fetch;
+  final BookSourceScripts? scripts;
   static const maxSearchResults = 80;
   static const maxChapters = 5000;
   static const maxTocPages = 20;
@@ -27,31 +30,98 @@ class BookSourceEngine {
     if (keyword.trim().isEmpty) return const [];
     if (page > 1 && !searchUrlUsesPage(source.searchUrl)) return const [];
     final requests = parseSearchRequests(
-      searchUrl: source.searchUrl,
+      searchUrl: _scriptedUrl(source, source.searchUrl, keyword.trim(), page),
       sourceUrl: source.url,
       sourceHeaders: source.headers,
       key: keyword.trim(),
       page: page,
+      script: (expression) =>
+          _script(source, expression, key: keyword, page: page),
     );
+    return _collect(
+      source,
+      source.search,
+      requests,
+      key: keyword.trim(),
+      page: page,
+      identify: identify,
+      limit: maxSearchResults,
+    );
+  }
+
+  Future<List<CustomBookRecord>> explore(
+    BookSource source,
+    String url, {
+    int page = 1,
+    int Function(String sourceUrl, String bookUrl)? identify,
+  }) async {
+    _ensureText(source);
+    if (url.trim().isEmpty) return const [];
+    if (page > 1 && !searchUrlUsesPage(url) && !ruleHasScript(url)) {
+      return const [];
+    }
+    final requests = parseSearchRequests(
+      searchUrl: _scriptedUrl(source, url, '', page),
+      sourceUrl: source.url,
+      sourceHeaders: source.headers,
+      key: '',
+      page: page,
+      script: (expression) => _script(source, expression, page: page),
+    );
+    return _collect(
+      source,
+      exploreRules(source),
+      requests,
+      page: page,
+      identify: identify,
+      limit: maxSearchResults,
+    );
+  }
+
+  Future<List<CustomBookRecord>> _collect(
+    BookSource source,
+    BookSourceRules fields,
+    List<BookSourceRequestSpec> requests, {
+    required int page,
+    required int limit,
+    String key = '',
+    int Function(String sourceUrl, String bookUrl)? identify,
+  }) async {
     final books = <CustomBookRecord>[];
     final seen = <String>{};
     for (final request in requests) {
       final response = await fetch(request);
       final node = RuleNode.parse(response.body, baseUrl: response.url);
-      final items = source.search['bookList'].trim().isEmpty
-          ? <RuleNode>[node]
-          : rules.nodes(source.search['bookList'], node);
+      final items = _items(
+        source,
+        fields['bookList'],
+        node,
+        key: key,
+        page: page,
+      );
       for (final item in items) {
-        final name = _one(rules.strings(source.search['name'], item));
-        final link = _one(rules.strings(source.search['bookUrl'], item));
+        final name = _field(source, fields['name'], item, key: key, page: page);
+        final link = _field(
+          source,
+          fields['bookUrl'],
+          item,
+          key: key,
+          page: page,
+        );
         if (name.isEmpty || link.isEmpty) continue;
         final bookUrl = canonicalBookSourceUrl(
           resolveBookSourceUrl(response.url, link),
         );
         if (!seen.add(bookUrl)) continue;
-        final cover = _one(rules.strings(source.search['coverUrl'], item));
+        final cover = _field(
+          source,
+          fields['coverUrl'],
+          item,
+          key: key,
+          page: page,
+        );
         final intro = _plain(
-          rules.strings(source.search['intro'], item).join('\n'),
+          _field(source, fields['intro'], item, key: key, page: page),
           response.url,
         );
         books.add(
@@ -60,19 +130,35 @@ class BookSourceEngine {
             sourceUrl: source.url,
             bookUrl: bookUrl,
             name: name,
-            author: _one(rules.strings(source.search['author'], item)),
-            kind: _one(rules.strings(source.search['kind'], item)),
+            author: _field(
+              source,
+              fields['author'],
+              item,
+              key: key,
+              page: page,
+            ),
+            kind: _field(source, fields['kind'], item, key: key, page: page),
             intro: intro,
             coverUrl: cover.isEmpty
                 ? ''
                 : resolveBookSourceUrl(response.url, cover),
-            lastChapter: _one(
-              rules.strings(source.search['lastChapter'], item),
+            lastChapter: _field(
+              source,
+              fields['lastChapter'],
+              item,
+              key: key,
+              page: page,
             ),
-            wordCount: _one(rules.strings(source.search['wordCount'], item)),
+            wordCount: _field(
+              source,
+              fields['wordCount'],
+              item,
+              key: key,
+              page: page,
+            ),
           ),
         );
-        if (books.length >= maxSearchResults) return books;
+        if (books.length >= limit) return books;
       }
     }
     return books;
@@ -88,7 +174,7 @@ class BookSourceEngine {
     var pageUrl = response.url;
     final init = source.info['init'].trim();
     if (init.isNotEmpty) {
-      final value = rules.strings(init, node).join('\n').trim();
+      final value = _field(source, init, node, key: '', page: 1);
       final first = value.split('\n').first.trim();
       if (first.startsWith('http') || first.startsWith('/')) {
         final next = await _get(source, resolveBookSourceUrl(pageUrl, first));
@@ -103,12 +189,7 @@ class BookSourceEngine {
     }
     String field(String rule, String fallback) {
       if (rule.trim().isEmpty) return fallback;
-      final value = rules
-          .strings(rule, node)
-          .map((item) => item.trim())
-          .where((item) => item.isNotEmpty)
-          .join('\n')
-          .trim();
+      final value = _field(source, rule, node, key: '', page: 1);
       return value.isEmpty ? fallback : value;
     }
 
@@ -150,8 +231,20 @@ class BookSourceEngine {
       final node = RuleNode.parse(response.body, baseUrl: response.url);
       final items = rules.nodes(listRule, node);
       for (final item in items) {
-        final title = _one(rules.strings(source.toc['chapterName'], item));
-        final link = _one(rules.strings(source.toc['chapterUrl'], item));
+        final title = _field(
+          source,
+          source.toc['chapterName'],
+          item,
+          key: '',
+          page: 1,
+        );
+        final link = _field(
+          source,
+          source.toc['chapterUrl'],
+          item,
+          key: '',
+          page: 1,
+        );
         if (_isVolume(source, item)) {
           if (title.isNotEmpty) {
             volumeTitle = title;
@@ -255,6 +348,99 @@ class BookSourceEngine {
         headers: {'User-Agent': bookSourceUserAgent, ...source.headers},
       ),
     );
+  }
+
+  JsContext _context(RuleNode node, {required String key, required int page}) =>
+      JsContext(result: node.raw, baseUrl: node.baseUrl, key: key, page: page);
+
+  PreparedRule _prepare(
+    BookSource source,
+    String rule,
+    RuleNode node, {
+    required String key,
+    required int page,
+  }) =>
+      scripts?.prepare(source, rule, _context(node, key: key, page: page)) ??
+      PreparedRule(rule, done: false);
+
+  String _field(
+    BookSource source,
+    String rule,
+    RuleNode node, {
+    required String key,
+    required int page,
+  }) {
+    final prepared = _prepare(source, rule, node, key: key, page: page);
+    if (prepared.done) return prepared.text.trim();
+    if (prepared.text.trim().isEmpty) return '';
+    return _one(rules.strings(prepared.text, node));
+  }
+
+  List<RuleNode> _items(
+    BookSource source,
+    String rule,
+    RuleNode node, {
+    required String key,
+    required int page,
+  }) {
+    final trimmed = rule.trim();
+    final scripts = this.scripts;
+    if (scripts != null &&
+        (trimmed.startsWith('<js>') || trimmed.startsWith('@js:'))) {
+      final code = trimmed.startsWith('@js:')
+          ? trimmed.substring(4)
+          : RegExp(r'^<js>([\s\S]*)</js>$').firstMatch(trimmed)?.group(1) ??
+                trimmed;
+      final raw = scripts.evalRaw(
+        source,
+        code,
+        _context(node, key: key, page: page),
+      );
+      if (raw is List) {
+        return [
+          for (final item in raw)
+            RuleNode.parse('$item', baseUrl: node.baseUrl),
+        ];
+      }
+      final text = raw == null ? '' : '$raw'.trim();
+      if (text.isEmpty) return [node];
+      return rules.nodes(text, node);
+    }
+    final prepared = _prepare(source, rule, node, key: key, page: page);
+    if (prepared.text.trim().isEmpty) return [node];
+    return rules.nodes(prepared.text, node);
+  }
+
+  String _script(
+    BookSource source,
+    String expression, {
+    String key = '',
+    int page = 1,
+  }) {
+    final scripts = this.scripts;
+    if (scripts == null) {
+      throw BookSourceRuleException('不支持 URL 中的 JavaScript 模板 {{$expression}}');
+    }
+    return scripts.eval(
+      source,
+      expression,
+      JsContext(key: key, page: page, baseUrl: source.url),
+    );
+  }
+
+  String _scriptedUrl(BookSource source, String url, String key, int page) {
+    final trimmed = url.trim();
+    if (scripts == null || !ruleHasScript(trimmed)) return url;
+    if (trimmed.startsWith('<js>') || trimmed.startsWith('@js:')) {
+      return scripts!
+          .prepare(
+            source,
+            trimmed,
+            JsContext(key: key, page: page, baseUrl: source.url),
+          )
+          .text;
+    }
+    return url;
   }
 
   void _ensureText(BookSource source) {
