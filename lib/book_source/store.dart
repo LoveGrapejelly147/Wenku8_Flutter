@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../book_identity.dart';
+import 'manage.dart';
 import 'model.dart';
 import 'url_template.dart';
 
@@ -23,6 +24,7 @@ class BookSourceStore extends ChangeNotifier {
   final Directory? root;
   final List<BookSource> sources = [];
   final Map<int, CustomBookRecord> books = {};
+  final Map<String, BookSourceCheck> checks = {};
   Future<void> _writes = Future<void>.value();
 
   static Future<BookSourceStore> open() async {
@@ -54,6 +56,9 @@ class BookSourceStore extends ChangeNotifier {
     books
       ..clear()
       ..addAll(await _readBooks(File('${directory.path}/books.json')));
+    checks
+      ..clear()
+      ..addAll(await _readChecks(File('${directory.path}/checks.json')));
     notifyListeners();
   }
 
@@ -104,11 +109,108 @@ class BookSourceStore extends ChangeNotifier {
     return save(source.copyWith(enabled: enabled));
   }
 
+  Future<void> setEnabledMany(Iterable<String> urls, bool enabled) {
+    return _serialized(() async {
+      final selected = urls.map(canonicalBookSourceUrl).toSet();
+      for (var index = 0; index < sources.length; index++) {
+        if (selected.contains(sources[index].url)) {
+          sources[index] = sources[index].copyWith(enabled: enabled);
+        }
+      }
+      await _writeSources();
+      notifyListeners();
+    });
+  }
+
+  Future<void> setGroupMany(Iterable<String> urls, String group) {
+    return _serialized(() async {
+      final selected = urls.map(canonicalBookSourceUrl).toSet();
+      for (var index = 0; index < sources.length; index++) {
+        if (selected.contains(sources[index].url)) {
+          sources[index] = sources[index].copyWith(group: group.trim());
+        }
+      }
+      await _writeSources();
+      notifyListeners();
+    });
+  }
+
+  Future<void> renameGroup(String from, String to) {
+    return _serialized(() async {
+      for (var index = 0; index < sources.length; index++) {
+        sources[index] = sources[index].copyWith(
+          group: replaceBookSourceGroup(sources[index].group, from, to),
+        );
+      }
+      await _writeSources();
+      notifyListeners();
+    });
+  }
+
+  Future<void> removeGroup(String group) => renameGroup(group, '');
+
+  Future<void> reorderSources(int from, int to) {
+    return _serialized(() async {
+      final next = moveBookSource([...sources], from, to);
+      sources
+        ..clear()
+        ..addAll(next);
+      await _writeSources();
+      notifyListeners();
+    });
+  }
+
+  Future<void> pinSource(String url, {required bool top}) {
+    return _serialized(() async {
+      final next = pinBookSource(
+        [...sources],
+        canonicalBookSourceUrl(url),
+        top: top,
+      );
+      sources
+        ..clear()
+        ..addAll(next);
+      await _writeSources();
+      notifyListeners();
+    });
+  }
+
+  Future<void> recordChecks(Iterable<BookSourceCheck> results) {
+    return _serialized(() async {
+      for (final check in results) {
+        checks[check.url] = check;
+      }
+      await _writeChecks();
+      notifyListeners();
+    });
+  }
+
+  Future<void> removeMany(Iterable<String> urls) {
+    return _serialized(() async {
+      final selected = urls.map(canonicalBookSourceUrl).toSet();
+      sources.removeWhere((source) => selected.contains(source.url));
+      checks.removeWhere((url, _) => selected.contains(url));
+      _reindex();
+      await _writeSources();
+      await _writeChecks();
+      notifyListeners();
+    });
+  }
+
+  void _reindex() {
+    for (var index = 0; index < sources.length; index++) {
+      sources[index] = sources[index].copyWith(order: index);
+    }
+  }
+
   Future<void> remove(String url) {
     return _serialized(() async {
       final canonical = canonicalBookSourceUrl(url);
       sources.removeWhere((source) => source.url == canonical);
+      checks.remove(canonical);
+      _reindex();
       await _writeSources();
+      await _writeChecks();
       notifyListeners();
     });
   }
@@ -175,6 +277,34 @@ class BookSourceStore extends ChangeNotifier {
         for (final book in books.values) '${book.id}': book.toJson(),
       }),
     );
+  }
+
+  Future<void> _writeChecks() async {
+    final directory = root;
+    if (directory == null) return;
+    await _atomic(
+      File('${directory.path}/checks.json'),
+      jsonEncode({
+        for (final check in checks.values) check.url: check.toJson(),
+      }),
+    );
+  }
+
+  Future<Map<String, BookSourceCheck>> _readChecks(File file) async {
+    final text = await _readText(file);
+    if (text == null || text.trim().isEmpty) return const {};
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is! Map) return const {};
+      return {
+        for (final value in decoded.values)
+          if (value is Map)
+            BookSourceCheck.fromJson(value.cast<String, dynamic>()).url:
+                BookSourceCheck.fromJson(value.cast<String, dynamic>()),
+      };
+    } on FormatException {
+      return const {};
+    }
   }
 
   Future<List<BookSource>> _readSources(File file) async {

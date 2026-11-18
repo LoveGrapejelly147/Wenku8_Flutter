@@ -416,6 +416,8 @@ lib/book_source/charset.dart
 lib/book_source/content_text.dart
 lib/book_source/engine.dart
 lib/book_source/http.dart
+lib/book_source/manage.dart
+lib/book_source/manage_page.dart
 lib/book_source/model.dart
 lib/book_source/pages.dart
 lib/book_source/repository.dart
@@ -763,6 +765,7 @@ scripts/sync_reading_widget_seasons.py
 shaders/analytic_glass.frag
 shaders/continuous_blur.frag
 shaders/glass_shape.glsl
+test/book_source_manage_test.dart
 test/book_source_repository_test.dart
 test/book_source_rule_test.dart
 third_party/JUNIVERSALCHARDET.md

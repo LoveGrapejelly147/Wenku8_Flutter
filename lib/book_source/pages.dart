@@ -10,6 +10,7 @@ import '../feature_pages.dart';
 import '../local_platform.dart';
 import 'engine.dart';
 import 'http.dart';
+import 'manage_page.dart';
 import 'model.dart';
 import 'repository.dart';
 import 'store.dart';
@@ -42,80 +43,10 @@ class BookSourceListPage extends StatelessWidget {
         onPressed: () => _add(context),
       ),
     ],
-    child: AnimatedBuilder(
-      animation: store,
-      builder: (context, _) => ListView(
-        padding: featurePadding(context),
-        children: [
-          const ContentPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AppText(
-                  BookSourceRepository.builtInName,
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                SizedBox(height: 6),
-                AppText(
-                  '内置书源，继续用于发现、分类和出版文库。不能编辑或删除。',
-                  style: TextStyle(fontSize: 12, height: 1.5),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-          sectionHeader(context, '自定义书源', '仅 Android · 兼容开源阅读常用字段'),
-          const SizedBox(height: 12),
-          if (store.sources.isEmpty)
-            const ContentPanel(
-              child: AppText(
-                '还没有自定义书源。可以从 JSON 文本、文件或 URL 导入，也可以新建一个。',
-                style: TextStyle(height: 1.5),
-              ),
-            ),
-          for (final source in store.sources) ...[
-            ContentPanel(
-              onTap: () => _edit(context, source),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AppText(
-                          source.name,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 4),
-                        AppText(
-                          [
-                            if (source.group.isNotEmpty) source.group,
-                            if (!source.isText) '非文本，搜索时跳过',
-                            source.url,
-                          ].join(' · '),
-                          maxLines: 2,
-                          style: TextStyle(
-                            fontSize: 12,
-                            height: 1.4,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Switch.adaptive(
-                    value: source.enabled,
-                    onChanged: (value) => store.setEnabled(source.url, value),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-          ],
-        ],
-      ),
+    child: BookSourceManager(
+      store: store,
+      reduceMotion: reduceMotion,
+      onEdit: (source) => _edit(context, source),
     ),
   );
 

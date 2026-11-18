@@ -95,7 +95,7 @@
 
 ## 自定义书源（Android）
 
-在「设置 → 书源」导入、新建、编辑、启用或删除书源，也可以从 JSON 文本、本地文件或 URL 导入，并导出为开源阅读（[Legado](https://github.com/gedoor/legado)）书源 JSON。
+在「设置 → 书源」导入、新建、编辑、启用或删除书源，也可以从 JSON 文本、本地文件或 URL 导入，并导出为开源阅读（[Legado](https://github.com/gedoor/legado)）书源 JSON。书源可以按分组筛选和管理，按名称或地址搜索，多选后批量启用、禁用、删除、导出或设置分组，拖动排序，以及置顶或置底。批量校验会并发搜索并记下结果和响应时间；无结果或失败的书源可以筛出或一次性删除。
 
 已保存的常用字段包括 `bookSourceUrl`、`bookSourceName`、`bookSourceGroup`、`searchUrl`、`header`、`ruleSearch`、`ruleBookInfo`、`ruleToc`、`ruleContent`、`exploreUrl` / `ruleExplore`。搜索地址支持 `{{key}}`、`{{page}}`、`{{page-1}}` 以及 POST、`charset` 和 `headers`。
 
@@ -104,7 +104,7 @@
 单个书源可以在调试页用关键字依次查看搜索、详情、目录和正文。规则测试：
 
 ```bash
-flutter test --no-test-assets test/book_source_rule_test.dart test/book_source_repository_test.dart test/reading_rules_test.dart
+flutter test --no-test-assets test/book_source_rule_test.dart test/book_source_repository_test.dart test/book_source_manage_test.dart test/reading_rules_test.dart
 ```
 
 ## 读到哪里，都能接着读
