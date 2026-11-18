@@ -311,6 +311,8 @@ class BookSourceRepository extends NovelRepository
     };
   }
 
+  Novel novelFrom(CustomBookRecord record) => _novel(record);
+
   Novel _novel(CustomBookRecord record) => Novel(
     id: record.id,
     title: record.name,

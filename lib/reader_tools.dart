@@ -68,6 +68,10 @@ class ReaderOpenListening extends ReaderToolAction {
   const ReaderOpenListening();
 }
 
+class ReaderSwitchSource extends ReaderToolAction {
+  const ReaderSwitchSource();
+}
+
 /// The chapter drawer owns scrubbing and text navigation; settings only owns
 /// typography, behavior, bookmarks and audio.
 class ReaderChapterProgress extends StatefulWidget {
@@ -1795,6 +1799,20 @@ class _ReaderToolsState extends State<ReaderTools>
               ArchiveIcon(CupertinoIcons.headphones, size: 20),
               SizedBox(width: 12),
               AppText('听书'),
+            ],
+          ),
+        ),
+      if (category == 'turn' &&
+          LocalPlatform.android &&
+          !isLocalBook(widget.novel.id))
+        GlassTextButton(
+          key: const ValueKey('reader-switch-source'),
+          onPressed: () => Navigator.pop(context, const ReaderSwitchSource()),
+          child: const Row(
+            children: [
+              ArchiveIcon(CupertinoIcons.arrow_2_squarepath, size: 20),
+              SizedBox(width: 12),
+              AppText('换源'),
             ],
           ),
         ),

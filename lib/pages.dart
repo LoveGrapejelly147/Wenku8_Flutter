@@ -37,6 +37,8 @@ import 'book_collection_grid.dart';
 import 'book_grid_density.dart';
 import 'book_categories.dart';
 import 'bookshelf_scope.dart';
+import 'book_source/aggregate.dart';
+import 'book_source/aggregate_page.dart';
 import 'book_source/pages.dart';
 import 'book_source/repository.dart';
 import 'reading_rules/models.dart';
@@ -906,6 +908,26 @@ class HomeShellState extends State<HomeShell> with TickerProviderStateMixin {
     ),
   );
 
+  void _openAggregateSearch() {
+    final sources = bookSourceRepositoryOf(widget.repository);
+    if (sources == null) return;
+    unawaited(
+      pushNovelPage<void>(
+        context,
+        AggregateSearchPage(
+          repository: sources,
+          state: widget.state,
+          initialQuery: _searchText.text,
+          reduceMotion: widget.state.reduceMotion,
+          onOpen: (novel) =>
+              openDetail(context, novel, widget.state, widget.repository),
+        ),
+        reduceMotion: widget.state.reduceMotion,
+        slot: ('search', 'aggregate'),
+      ),
+    );
+  }
+
   Widget _searchField(BuildContext context) => Row(
     children: [
       const SizedBox(
@@ -926,6 +948,21 @@ class HomeShellState extends State<HomeShell> with TickerProviderStateMixin {
           },
         ),
       ),
+      if (LocalPlatform.android &&
+          bookSourceRepositoryOf(widget.repository) != null)
+        SizedBox(
+          width: 46,
+          height: 46,
+          child: ArchiveIconButton(
+            key: const ValueKey('aggregate-search-open'),
+            tooltip: '聚合搜索',
+            onPressed: _openAggregateSearch,
+            icon: const ArchiveIcon(
+              CupertinoIcons.square_stack_3d_up,
+              size: 18,
+            ),
+          ),
+        ),
       SizedBox(
         width: 46,
         height: 46,
@@ -1560,6 +1597,65 @@ class FeedFooter extends StatelessWidget {
       ],
     ),
   );
+}
+
+Future<void> switchBookSource(
+  BuildContext context, {
+  required Novel current,
+  required LibraryState state,
+  required NovelRepository repository,
+  required String? chapterTitle,
+  required bool reduceMotion,
+}) async {
+  final sources = bookSourceRepositoryOf(repository);
+  if (sources == null) return;
+  final chosen = await pushNovelPage<Novel>(
+    context,
+    SourceSwitchPage(
+      repository: sources,
+      title: current.title,
+      author: current.author,
+      currentId: current.id,
+      reduceMotion: reduceMotion,
+    ),
+    reduceMotion: reduceMotion,
+    slot: ('source-switch', current.id),
+  );
+  if (chosen == null || !context.mounted) return;
+  try {
+    final detailed = (await repository.detail(
+      chosen,
+    )).withChapters(await repository.chapters(chosen.id));
+    final plan = planSourceSwitch(
+      currentTitle: chapterTitle,
+      chapters: detailed.chapters,
+    );
+    await applySourceSwitch(
+      state: state,
+      current: current,
+      target: detailed,
+      plan: plan,
+      position: state.positionFor(current.id),
+    );
+    if (!context.mounted) return;
+    showNovelFeedback(
+      context,
+      plan.matchedTitle ? '已换源，并按章节标题保留进度' : '已换源，未匹配到相同章节，从第一章开始',
+    );
+    await pushNovelPage<void>(
+      context,
+      ReaderLoaderPage(novel: detailed, state: state, repository: repository),
+      reduceMotion: reduceMotion,
+      slot: ('reader-entry', detailed.id),
+    );
+  } catch (error) {
+    if (context.mounted) {
+      showNovelFeedback(
+        context,
+        error is FormatException ? error.message : '换源失败，请重试',
+      );
+    }
+  }
 }
 
 void openDetail(
@@ -4535,6 +4631,26 @@ class _DetailPageState extends State<DetailPage> with TickerProviderStateMixin {
           subtitle: _directoryCountLabel,
         ),
       ),
+      if (LocalPlatform.android &&
+          !isLocalBook(novel.id) &&
+          bookSourceRepositoryOf(repository) != null)
+        GlassTextButton(
+          key: const ValueKey('detail-switch-source'),
+          compact: true,
+          onPressed: isLoading
+              ? null
+              : () => switchBookSource(
+                  context,
+                  current: novel,
+                  state: state,
+                  repository: repository,
+                  chapterTitle: _recordedChapter == null
+                      ? null
+                      : novel.chapters[_recordedChapter!].title,
+                  reduceMotion: _reduceMotion,
+                ),
+          child: const AppText('换源'),
+        ),
       GlassTextButton(
         key: const ValueKey('detail-catalogue-order'),
         compact: true,
@@ -10976,6 +11092,18 @@ class _ReaderPageState extends State<ReaderPage>
       case ReaderOpenHandoff():
         _toolsOpen = false;
         await _openHandoff();
+      case ReaderSwitchSource():
+        _toolsOpen = false;
+        await switchBookSource(
+          context,
+          current: _sourceBook,
+          state: widget.state,
+          repository: widget.repository,
+          chapterTitle: _sourceBook.chapters.isEmpty
+              ? null
+              : _sourceBook.chapters[_chapter].title,
+          reduceMotion: widget.state.reduceMotion,
+        );
       case null:
         break;
     }
