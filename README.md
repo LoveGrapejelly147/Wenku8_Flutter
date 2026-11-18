@@ -97,7 +97,7 @@ Import through OpenList/WebDAV or Quark Drive (experimental). Access OneDrive, G
 
 **Settings → Book sources (设置 → 书源)** imports, creates, edits, enables, and deletes sources. JSON can be pasted, opened from a file, or downloaded from a URL, then exported in the [Legado](https://github.com/gedoor/legado) book-source format.
 
-Supported rules include CSS (`@css:` and the usual `tag.class.index@text` form), XPath (`@XPath:` or a leading `//`), JSONPath (`@json:` or a leading `$.`), `##regex##replacement`, and `{{key}}` / `{{page}}` URL templates, including POST, charset, and headers. JavaScript rules (`<js>`, `@js:`) are reported as unsupported instead of being run. Wenku8 stays the built-in source. Local books, the shelf, progress, offline cache, and read-aloud keep their existing path. Each source has a debug page that runs search, details, contents, and chapter text.
+Supported rules include CSS (`@css:` and the usual `tag.class.index@text` form), XPath (`@XPath:` or a leading `//`), JSONPath (`@json:` or a leading `$.`), `##regex##replacement`, and `{{key}}` / `{{page}}` URL templates, including POST, charset, and headers. JavaScript rules (`<js>`, `@js:`) are reported as unsupported instead of being run. Wenku8 stays the built-in source. Local books, the shelf, progress, offline cache, and read-aloud keep their existing path. Each source has a debug page that runs search, details, contents, and chapter text. **Settings → Rules (设置 → 规则)** also holds TXT chapter patterns, text replacement, and online dictionary lookups.
 
 ## Pick up where you left off
 

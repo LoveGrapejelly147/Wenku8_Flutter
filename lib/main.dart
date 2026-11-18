@@ -14,6 +14,7 @@ import 'app_repository.dart';
 import 'book_source/http.dart';
 import 'book_source/repository.dart';
 import 'book_source/store.dart';
+import 'reading_rules/store.dart';
 import 'catalog.dart';
 import 'legacy_wenku_repository.dart';
 import 'library_state.dart';
@@ -84,6 +85,7 @@ Future<void> main() async {
   final WenkuAccount? account = LocalPlatform.fileActions
       ? WenkuAccount()
       : null;
+  if (LocalPlatform.android) await ReadingRuleStore.openShared();
   const wenku = LegacyWenkuRepository();
   // Custom sources are an Android catalogue beside Wenku8. Other platforms keep
   // the existing remote so their startup path does not gain this dependency.

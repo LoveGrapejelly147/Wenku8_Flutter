@@ -14,6 +14,10 @@ import 'models.dart';
 import 'store.dart';
 import 'custom_tts.dart';
 import 'enhancement.dart';
+import '../local_platform.dart';
+import '../reading_rules/models.dart';
+import '../reading_rules/store.dart';
+import '../book_source/repository.dart';
 
 abstract interface class ListeningAudioOutput {
   Stream<Duration> get positions;
@@ -144,6 +148,9 @@ class ListeningController {
       follow: store.follow,
     );
     unawaited(this.enhancement.configure(store.enhancement));
+    if (LocalPlatform.android) {
+      ReadingRuleStore.shared.addListener(_readingRulesChanged);
+    }
   }
   final NovelRepository repository;
   final SpeechAudioSource audio;
@@ -557,10 +564,19 @@ class ListeningController {
         missingLanguages: const {},
         skippedLanguageSegments: 0,
       );
-      final source = await repository.chapterContent(
+      final raw = await repository.chapterContent(
         novel.id,
         novel.chapters[index],
       );
+      final record = bookSourceRepositoryOf(repository)?.store.book(novel.id);
+      final source = LocalPlatform.android
+          ? ReadingRuleStore.shared.purify(
+              raw,
+              target: ReplaceTarget.content,
+              bookTitle: novel.title,
+              sourceUrl: record?.sourceUrl,
+            )
+          : raw;
       if (!_valid(generation)) return;
       final content = source.trim().isEmpty
           ? const ReaderContent([])
@@ -1794,7 +1810,14 @@ class ListeningController {
   }
 
   Future<void> dispose() => _disposing ??= _dispose();
+  void _readingRulesChanged() {
+    final novel = snapshot.value.novel;
+    if (_disposed || novel == null) return;
+    unawaited(_loadChapter(snapshot.value.chapter, ++_generation));
+  }
+
   Future<void> _dispose() async {
+    ReadingRuleStore.shared.removeListener(_readingRulesChanged);
     await stop();
     _disposed = true;
     await _positions?.cancel();

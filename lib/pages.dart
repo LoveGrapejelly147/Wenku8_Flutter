@@ -39,6 +39,9 @@ import 'book_categories.dart';
 import 'bookshelf_scope.dart';
 import 'book_source/pages.dart';
 import 'book_source/repository.dart';
+import 'reading_rules/models.dart';
+import 'reading_rules/pages.dart';
+import 'reading_rules/store.dart';
 import 'book_source_badge.dart';
 import 'book_search.dart';
 import 'blocked_tags_controls.dart';
@@ -3058,6 +3061,19 @@ class SettingsPage extends StatelessWidget {
                 ),
                 reduceMotion: state.reduceMotion,
                 slot: ('settings', 'book-sources'),
+              ),
+            ),
+            const SizedBox(height: 14),
+            FeatureEntry(
+              key: const ValueKey('settings-reading-rules'),
+              title: '规则',
+              subtitle: 'TXT 目录、替换净化和在线查词',
+              icon: CupertinoIcons.square_list,
+              onTap: () => pushNovelPage<void>(
+                context,
+                ReadingRulesPage(reduceMotion: state.reduceMotion),
+                reduceMotion: state.reduceMotion,
+                slot: ('settings', 'reading-rules'),
               ),
             ),
             const SizedBox(height: 14),
@@ -6384,6 +6400,9 @@ class _ReaderPageState extends State<ReaderPage>
     _chromeTarget = widget.state.readerChromeVisible;
     widget.state.readerSettingsChanges.addListener(_paperChanged);
     widget.state.illustrationChanges.addListener(_illustrationLayoutChanged);
+    if (LocalPlatform.android) {
+      ReadingRuleStore.shared.addListener(_purifyChanged);
+    }
     _autoScroll = createTicker(_autoTick);
     _chapterReveal = AnimationController(
       vsync: this,
@@ -6486,6 +6505,7 @@ class _ReaderPageState extends State<ReaderPage>
     _dismissChromeHint?.call();
     _releaseFeedbackHeader?.call();
     widget.state.readerSettingsChanges.removeListener(_paperChanged);
+    ReadingRuleStore.shared.removeListener(_purifyChanged);
     _idleSave?.cancel();
     _savePosition(notify: false, finalSave: true);
     _highlightTimer?.cancel();
@@ -7094,6 +7114,13 @@ class _ReaderPageState extends State<ReaderPage>
     }
   }
 
+  void _purifyChanged() {
+    if (!mounted) return;
+    _preparedContent.clear();
+    _contentLoads.clear();
+    unawaited(_loadContent());
+  }
+
   Future<({ReaderContent? content, Object? error})> _loadContent({
     bool refresh = false,
     _PreparedReaderChapter? prepared,
@@ -7598,9 +7625,19 @@ class _ReaderPageState extends State<ReaderPage>
         );
       }
     }
-    return widget.repository.chapterContent(
+    final raw = await widget.repository.chapterContent(
       widget.novel.id,
       _sourceBook.chapters[index],
+    );
+    if (!LocalPlatform.android) return raw;
+    final record = bookSourceRepositoryOf(
+      widget.repository,
+    )?.store.book(widget.novel.id);
+    return ReadingRuleStore.shared.purify(
+      raw,
+      target: ReplaceTarget.content,
+      bookTitle: widget.novel.title,
+      sourceUrl: record?.sourceUrl,
     );
   }
 

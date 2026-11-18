@@ -1057,3 +1057,8 @@ assets/report/scene_mist_harbor.webp
 assets/report/scene_mist_harbor_portrait.webp
 assets/report/scene_mountain_dawn.webp
 assets/report/scene_mountain_dawn_portrait.webp
+lib/reading_rules/dict_lookup.dart
+lib/reading_rules/models.dart
+lib/reading_rules/pages.dart
+lib/reading_rules/store.dart
+test/reading_rules_test.dart

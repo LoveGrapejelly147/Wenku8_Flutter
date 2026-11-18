@@ -13,6 +13,7 @@ import 'library_state.dart';
 import 'reader_annotation_editor.dart';
 import 'reader_bookmark_excerpt.dart';
 import 'local_platform.dart';
+import 'reading_rules/store.dart';
 import 'reader_preferences.dart';
 import 'font_settings_page.dart';
 import 'glass_choices.dart';
@@ -1795,6 +1796,16 @@ class _ReaderToolsState extends State<ReaderTools>
               SizedBox(width: 12),
               AppText('听书'),
             ],
+          ),
+        ),
+      if (category == 'turn' && LocalPlatform.android)
+        AnimatedBuilder(
+          animation: ReadingRuleStore.shared,
+          builder: (context, _) => _switch(
+            context,
+            '净化正文',
+            ReadingRuleStore.shared.purifyEnabled,
+            ReadingRuleStore.shared.setPurifyEnabled,
           ),
         ),
       if (category == 'turn' && widget.canHandoff)

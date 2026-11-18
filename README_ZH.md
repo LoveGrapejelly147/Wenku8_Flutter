@@ -99,10 +99,12 @@
 
 已保存的常用字段包括 `bookSourceUrl`、`bookSourceName`、`bookSourceGroup`、`searchUrl`、`header`、`ruleSearch`、`ruleBookInfo`、`ruleToc`、`ruleContent`、`exploreUrl` / `ruleExplore`。搜索地址支持 `{{key}}`、`{{page}}`、`{{page-1}}` 以及 POST、`charset` 和 `headers`。
 
-规则支持 CSS（`@css:`，以及 `.class`、`tag.li.0@text` 这类默认写法）、XPath（`@XPath:` 或以 `//` 开头）、JSONPath（`@json:` 或以 `$.` 开头）和 `##正则##替换`。`<js>`、`@js:` 与 `{{ }}` 脚本不会执行，调试和阅读时会提示不支持。轻小说文库仍是内置书源；本地书、书架、进度、离线缓存和朗读沿用原来的流程。单个书源可以在调试页用关键字依次查看搜索、详情、目录和正文。规则测试：
+规则支持 CSS（`@css:`，以及 `.class`、`tag.li.0@text` 这类默认写法）、XPath（`@XPath:` 或以 `//` 开头）、JSONPath（`@json:` 或以 `$.` 开头）和 `##正则##替换`。`<js>`、`@js:` 与 `{{ }}` 脚本不会执行，调试和阅读时会提示不支持。轻小说文库仍是内置书源；本地书、书架、进度、离线缓存和朗读沿用原来的流程。设置 → 规则里还有三类规则，都在 Android 上可用：TXT 目录规则会在导入本地 TXT 时自动匹配，也可在本地书详情里换规则重新切分；替换净化作用于正文或标题，范围可以是全部、书名或书源，阅读器里可以一键开关，朗读使用净化后的文本；在线查词按 `urlRule` / `showRule` 查询，和离线词典一起显示。三类规则都兼容开源阅读的 JSON 导入导出。
+
+单个书源可以在调试页用关键字依次查看搜索、详情、目录和正文。规则测试：
 
 ```bash
-flutter test --no-test-assets test/book_source_rule_test.dart test/book_source_repository_test.dart
+flutter test --no-test-assets test/book_source_rule_test.dart test/book_source_repository_test.dart test/reading_rules_test.dart
 ```
 
 ## 读到哪里，都能接着读

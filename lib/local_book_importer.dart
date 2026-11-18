@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_interactions.dart';
@@ -19,6 +22,8 @@ import 'local_library_preferences.dart';
 import 'local_series_actions.dart';
 import 'local_scan_page.dart';
 import 'local_scan_selection.dart';
+import 'local_platform.dart';
+import 'reading_rules/store.dart';
 
 /// Category writes follow the finite selected batch, not every parsed member.
 /// Books are durable first; a failed assignment is reported without reimporting
@@ -320,11 +325,26 @@ class LocalBookImporter extends ChangeNotifier {
           if (name.toLowerCase().endsWith('.txt')) {
             decoded = await documents.decodeTextFile(path, encoding: encoding);
           }
+          var options = importOptions;
+          if (LocalPlatform.android &&
+              name.toLowerCase().endsWith('.txt') &&
+              !importOptions.customToc) {
+            try {
+              final sampleFile = File(decoded ?? path);
+              final sample = await sampleFile
+                  .openRead(0, 64 * 1024)
+                  .transform(utf8.decoder)
+                  .join();
+              options = await ReadingRuleStore.shared.optionsForText(sample);
+            } catch (_) {
+              options = importOptions;
+            }
+          }
           imported = await books.importFile(
             name,
             path,
             decodedPath: decoded,
-            options: importOptions,
+            options: options,
             recoverDamagedEpub:
                 !automatic && name.toLowerCase().endsWith('.epub'),
           );

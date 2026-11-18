@@ -36,6 +36,7 @@ LOCAL_ONLY_PARTS = {'test', 'tests', 'integration_test', 'test_driver', 'android
 PUBLIC_RULE_TESTS = {
     'test/book_source_rule_test.dart',
     'test/book_source_repository_test.dart',
+    'test/reading_rules_test.dart',
 }
 LOCAL_ONLY_NAMES = {'AGENTS.md', 'error_log.dart', 'error_diagnostics.dart', 'diagnostic_cipher.dart', 'network_diagnostics.dart', 'performance_diagnostics.dart', 'troubleshooting_page.dart', 'DiagnosticEnvironment.kt', 'AppStorageSnapshot.kt', 'AppStorageSnapshot.swift'}
 CONNECTIVITY_PATTERNS = {
