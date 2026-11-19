@@ -311,7 +311,8 @@ class BookSourceStore extends ChangeNotifier {
     final text = await _readText(file);
     if (text == null || text.trim().isEmpty) return const [];
     try {
-      return parseBookSourceDocument(text);
+      // 个别坏条目只跳过，不再把整个已保存的书源文件当坏文件隔离掉。
+      return parseBookSourceDocumentReport(text).sources;
     } on FormatException {
       await _quarantine(file);
       return const [];

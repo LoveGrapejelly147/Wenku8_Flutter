@@ -318,16 +318,40 @@ class CustomBookRecord {
   }
 }
 
-List<BookSource> parseBookSourceDocument(String text) {
-  final decoded = jsonDecode(text);
+/// Parses a Legado book-source document: one source or a JSON array of them.
+///
+/// Entries that fail to parse (missing URL/name, bad rule JSON, …) are
+/// skipped instead of failing the whole batch: a large collection usually
+/// contains a few stale entries, and one bad entry should not throw away
+/// the hundreds of good ones. [skipped] counts them. Text that is not
+/// JSON at all still throws, as before.
+({List<BookSource> sources, int skipped}) parseBookSourceDocumentReport(
+  String text,
+) {
+  var cleaned = text.trimLeft();
+  if (cleaned.startsWith('\uFEFF')) cleaned = cleaned.substring(1);
+  final decoded = jsonDecode(cleaned);
   final items = decoded is List ? decoded : [decoded];
   final sources = <BookSource>[];
+  var skipped = 0;
   for (final item in items) {
-    if (item is! Map) continue;
-    sources.add(BookSource.fromLegado(item.cast<String, dynamic>()));
+    if (item is! Map) {
+      skipped++;
+      continue;
+    }
+    try {
+      sources.add(BookSource.fromLegado(item.cast<String, dynamic>()));
+    } on FormatException {
+      skipped++;
+    }
   }
-  if (sources.isEmpty) throw const FormatException('没有可导入的书源');
-  return sources;
+  return (sources: sources, skipped: skipped);
+}
+
+List<BookSource> parseBookSourceDocument(String text) {
+  final report = parseBookSourceDocumentReport(text);
+  if (report.sources.isEmpty) throw const FormatException('没有可导入的书源');
+  return report.sources;
 }
 
 String encodeBookSources(List<BookSource> sources) =>

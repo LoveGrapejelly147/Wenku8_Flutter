@@ -146,7 +146,12 @@ class _BookSourceExplorePageState extends State<BookSourceExplorePage> {
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _error = error is FormatException ? error.message : '发现列表加载失败';
+        // BookSourceRuleException 是 FormatException，会显示具体原因；
+        // HttpException/SocketException/超时等不是，之前只显示一句
+        // “发现列表加载失败”，查不出原因。现在把原始错误也带上。
+        _error = error is FormatException
+            ? error.message
+            : '发现列表加载失败：$error';
         _more = false;
       });
     } finally {
@@ -154,15 +159,34 @@ class _BookSourceExplorePageState extends State<BookSourceExplorePage> {
     }
   }
 
+  void _retry() {
+    // 失败后 _more 已是 false，_load 会直接返回，先恢复再重载。
+    // _page 不动：第一页失败还是第 1 页，后面页失败接着那一页续载。
+    setState(() {
+      _more = true;
+      _error = null;
+    });
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) => ArchiveFeaturePage(
     title: widget.kind.title,
     code: widget.source.name,
-    child: ListView(
-      padding: featurePadding(context),
-      children: [
-        if (_books.isEmpty && _loading) const AppText('正在加载发现列表…'),
-        if (_error != null) AppText(_error!),
+    child: Scrollbar(
+      thumbVisibility: true,
+      thickness: 4,
+      radius: const Radius.circular(2),
+      child: ListView(
+        padding: featurePadding(context),
+        children: [
+          if (_books.isEmpty && _loading) const AppText('正在加载发现列表…'),
+          if (_error != null) AppText(_error!),
+          if (_error != null)
+            GlassTextButton(
+              onPressed: _loading ? null : _retry,
+              child: const AppText('重试'),
+            ),
         for (final book in _books)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -191,6 +215,7 @@ class _BookSourceExplorePageState extends State<BookSourceExplorePage> {
         if (!_more && _books.isEmpty && _error == null && !_loading)
           const AppText('这个分类没有书'),
       ],
+      ),
     ),
   );
 }

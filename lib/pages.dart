@@ -1134,55 +1134,71 @@ class DiscoverPage extends StatelessWidget {
         ),
       );
     } else if (books.isEmpty && featuredCount == 0 && feed?.error != null) {
-      body = Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              24,
-              MediaQuery.paddingOf(context).top +
-                  FrostedHeader.toolbarHeight +
-                  20,
-              24,
-              0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _categoryHeader(context),
-                const SizedBox(height: 12),
-                _sourceDiscover(context),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ContentNotice(
-              icon: CupertinoIcons.wifi_exclamationmark,
-              title: '书籍加载失败',
-              message: feed!.failureMessage,
-              onRetry: feed!.retry,
-              secondaryAction: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ?returnToLatest,
-                  if (feed?.publication != null &&
-                      WenkuFeaturesScope.maybeOf(context) != null)
-                    GlassTextButton(
-                      onPressed: () => pushNovelPage<void>(
-                        context,
-                        WenkuAccountPage(
-                          account: WenkuFeaturesScope.maybeOf(context)!.account,
-                          state: state,
-                          repository: repository,
-                        ),
-                        reduceMotion: state.reduceMotion,
-                      ),
-                      child: const AppText('查看账号连接'),
-                    ),
-                ],
+      // 报错时书源发现可能很长：原来是不可滚动的 Column，分类一多就被
+      // 底部导航挡住、滑不动。这里改成带滚动条的可滚动列表，加载失败的
+      // 提示和重试按钮跟在分类下面，滑到底就能看到。
+      body = Scrollbar(
+        thumbVisibility: true,
+        thickness: 4,
+        radius: const Radius.circular(2),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  24,
+                  MediaQuery.paddingOf(context).top +
+                      FrostedHeader.toolbarHeight +
+                      20,
+                  24,
+                  0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _categoryHeader(context),
+                    const SizedBox(height: 12),
+                    _sourceDiscover(context),
+                  ],
+                ),
               ),
-            ),
+              Padding(
+                padding: EdgeInsets.only(
+                  bottom: DockLayout.scrollPaddingOf(context),
+                ),
+                child: ContentNotice(
+                  icon: CupertinoIcons.wifi_exclamationmark,
+                  title: '书籍加载失败',
+                  message: feed!.failureMessage,
+                  onRetry: feed!.retry,
+                  secondaryAction: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ?returnToLatest,
+                      if (feed?.publication != null &&
+                          WenkuFeaturesScope.maybeOf(context) != null)
+                        GlassTextButton(
+                          onPressed: () => pushNovelPage<void>(
+                            context,
+                            WenkuAccountPage(
+                              account: WenkuFeaturesScope.maybeOf(context)!
+                                  .account,
+                              state: state,
+                              repository: repository,
+                            ),
+                            reduceMotion: state.reduceMotion,
+                          ),
+                          child: const AppText('查看账号连接'),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       );
     } else {
       body = NotificationListener<ScrollNotification>(
@@ -1208,8 +1224,12 @@ class DiscoverPage extends StatelessWidget {
             feed?.publication?.id,
             mode,
           )),
-          child: CustomScrollView(
-            key: const PageStorageKey('discover'),
+          child: Scrollbar(
+            thumbVisibility: true,
+            thickness: 4,
+            radius: const Radius.circular(2),
+            child: CustomScrollView(
+              key: const PageStorageKey('discover'),
             clipBehavior: LibraryReflowScope.clipOf(context),
             physics: const AlwaysScrollableScrollPhysics(),
             cacheExtent: BookCollectionLayout.cacheExtentFor(
@@ -1369,6 +1389,7 @@ class DiscoverPage extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
       );
       if (feed != null) {

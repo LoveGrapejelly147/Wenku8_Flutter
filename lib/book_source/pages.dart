@@ -126,8 +126,10 @@ class BookSourceListPage extends StatelessWidget {
             hint: 'https://',
           );
           if (url == null || url.trim().isEmpty) return;
+          // 书源合集常常有好几 MiB，别用默认的 2 MiB 章节上限去接。
           final response = await BookSourceHttp.shared.send(
             BookSourceRequestSpec(url: url.trim()),
+            limitBytes: BookSourceHttp.importMaxBytes,
           );
           if (!context.mounted) return;
           await _importText(context, response.body);
@@ -142,14 +144,19 @@ class BookSourceListPage extends StatelessWidget {
   }
 
   Future<void> _importText(BuildContext context, String text) async {
-    final sources = parseBookSourceDocument(text);
-    final added = await store.importAll(sources);
+    final report = parseBookSourceDocumentReport(text);
+    if (report.sources.isEmpty) {
+      throw const FormatException('没有可导入的书源');
+    }
+    final added = await store.importAll(report.sources);
     if (!context.mounted) return;
-    final updated = sources.length - added;
-    showNovelFeedback(
-      context,
-      updated == 0 ? '已导入 ${sources.length} 个书源' : '已导入 $added 个，更新 $updated 个',
-    );
+    final updated = report.sources.length - added;
+    final parts = <String>[
+      if (added > 0) '已导入 $added 个',
+      if (updated > 0) '更新 $updated 个',
+      if (report.skipped > 0) '跳过 ${report.skipped} 个无效的',
+    ];
+    showNovelFeedback(context, parts.join('，'));
   }
 
   Future<void> _export(BuildContext context) async {

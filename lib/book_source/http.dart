@@ -36,7 +36,14 @@ class BookSourceHttp {
   final _cookies = <String, Map<String, String>>{};
   static const maxBytes = 2 * 1024 * 1024;
 
-  Future<BookSourceResponse> send(BookSourceRequestSpec spec) async {
+  /// Book-source collections are often several MiB; the 2 MiB default is
+  /// for chapter pages, not for importing a whole collection by URL.
+  static const importMaxBytes = 16 * 1024 * 1024;
+
+  Future<BookSourceResponse> send(
+    BookSourceRequestSpec spec, {
+    int limitBytes = maxBytes,
+  }) async {
     final bytes = await _request(
       spec.url,
       method: spec.method,
@@ -45,6 +52,7 @@ class BookSourceHttp {
           : encodeBookSourceText(spec.body!, spec.charset),
       headers: spec.headers,
       contentType: _contentType(spec),
+      limitBytes: limitBytes,
     );
     final detected = bytes.charset;
     final charset = _explicitCharset(spec.charset)
@@ -82,6 +90,7 @@ class BookSourceHttp {
     List<int>? body,
     required Map<String, String> headers,
     String? contentType,
+    int limitBytes = maxBytes,
   }) async {
     final parsed = Uri.tryParse(url);
     if (parsed == null ||
@@ -140,7 +149,7 @@ class BookSourceHttp {
         }
         continue;
       }
-      final collected = await _read(response);
+      final collected = await _read(response, limitBytes);
       if (response.statusCode >= 400) {
         throw BookSourceRuleException('书源请求失败（HTTP ${response.statusCode}）');
       }
@@ -155,11 +164,11 @@ class BookSourceHttp {
     throw const BookSourceRuleException('书源重定向次数过多');
   }
 
-  Future<List<int>> _read(HttpClientResponse response) async {
+  Future<List<int>> _read(HttpClientResponse response, int limitBytes) async {
     final builder = BytesBuilder(copy: false);
     await for (final chunk in response) {
       builder.add(chunk);
-      if (builder.length > maxBytes) {
+      if (builder.length > limitBytes) {
         throw const BookSourceRuleException('书源响应过大');
       }
     }

@@ -149,4 +149,36 @@ void main() {
     expect(again.toc['chapterList'], '#list a');
     expect(again.headers['User-Agent'], 'test');
   });
+
+  test('batch import skips bad entries instead of failing them all', () {
+    const raw = '''
+    [
+      {"bookSourceUrl": "https://a.example/", "bookSourceName": "好源A"},
+      {"bookSourceName": "缺地址的源"},
+      {"bookSourceUrl": "not a url", "bookSourceName": "坏地址的源"},
+      {"bookSourceUrl": "https://b.example/", "bookSourceName": "好源B"},
+      "not an object"
+    ]
+    ''';
+    final report = parseBookSourceDocumentReport(raw);
+    expect(
+      report.sources.map((source) => source.name),
+      ['好源A', '好源B'],
+    );
+    expect(report.skipped, 3);
+    expect(parseBookSourceDocument(raw).length, 2);
+  });
+
+  test('batch import tolerates a leading BOM', () {
+    const raw =
+        '\uFEFF[{"bookSourceUrl": "https://a.example/", "bookSourceName": "好源A"}]';
+    expect(parseBookSourceDocument(raw).single.name, '好源A');
+  });
+
+  test('batch import still fails when nothing is usable', () {
+    expect(
+      () => parseBookSourceDocument('[{"bookSourceName": "缺地址"}]'),
+      throwsA(isA<FormatException>()),
+    );
+  });
 }
