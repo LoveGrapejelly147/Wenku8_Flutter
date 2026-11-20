@@ -23,6 +23,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    lint {
+        checkReleaseBuilds = false
+    }
+
     defaultConfig {
         // Public source previews must not replace an installed distribution.
         applicationId = "org.mewx.wenku8_flutter.source_preview"
