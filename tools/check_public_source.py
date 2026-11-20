@@ -32,6 +32,15 @@ PRIVATE_COMPONENT_FILES = {
 }
 PRIVATE_COMPONENT_DIRS = {'tools/content-gateway', 'android/app/src/main/java/org/mewx/wenku8/api', 'studio-android'}
 LOCAL_ONLY_PARTS = {'test', 'tests', 'integration_test', 'test_driver', 'androidTest', 'ohosTest', 'RunnerTests', 'RunnerDocumentUITests'}
+# Rule-parser tests ship with the book-source module. Other tests stay private.
+PUBLIC_RULE_TESTS = {
+    'test/book_source_rule_test.dart',
+    'test/book_source_repository_test.dart',
+    'test/reading_rules_test.dart',
+    'test/book_source_manage_test.dart',
+    'test/book_source_aggregate_test.dart',
+    'test/book_source_explore_js_test.dart',
+}
 LOCAL_ONLY_NAMES = {'AGENTS.md', 'error_log.dart', 'error_diagnostics.dart', 'diagnostic_cipher.dart', 'network_diagnostics.dart', 'performance_diagnostics.dart', 'troubleshooting_page.dart', 'DiagnosticEnvironment.kt', 'AppStorageSnapshot.kt', 'AppStorageSnapshot.swift'}
 CONNECTIVITY_PATTERNS = {
     'restricted native binding': re.compile(r'getMagicVersion' + r'Cpp|System[.]loadLibrary\([\s\S]{0,40}[\"\']cpp[\"\']'),
@@ -75,9 +84,10 @@ def inspect(root: Path, files=None, *, require_manifest=False) -> list[str]:
             continue
         if not file.is_file():
             continue
-        if (any(part in LOCAL_ONLY_PARTS for part in relative.parts) or
+        if (relative.as_posix() not in PUBLIC_RULE_TESTS and (
+                any(part in LOCAL_ONLY_PARTS for part in relative.parts) or
                 file.name in LOCAL_ONLY_NAMES or file.name.startswith(('test_', '._')) or
-                re.search(r'(?:_test[.]|[.]test[.]|Tests[.]|Test[.])', file.name)):
+                re.search(r'(?:_test[.]|[.]test[.]|Tests[.]|Test[.])', file.name))):
             issues.append(f'{relative}: local-only test or development material')
         if allowed is not None and relative.as_posix() not in allowed:
             issues.append(f'{relative}: source inventory review required')

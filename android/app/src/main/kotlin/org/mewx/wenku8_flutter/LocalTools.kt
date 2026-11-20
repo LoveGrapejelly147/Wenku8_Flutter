@@ -29,7 +29,9 @@ class LocalTools(private val activity: Activity) : MethodChannel.MethodCallHandl
     companion object {
         private const val REQUEST = 8019
         private const val GALLERY_PERMISSION_REQUEST = 8022
-        private const val MAX_BYTES = 4 * 1024 * 1024
+        // 导入/导出文档的上限：书源合集常常好几 MiB，4 MiB 一次导不了多少。
+        // 仍有上限，只是放到 16 MiB；旧版记录的总量上限（8 MiB）不变。
+        private const val MAX_BYTES = 16 * 1024 * 1024
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -284,7 +286,7 @@ class LocalTools(private val activity: Activity) : MethodChannel.MethodCallHandl
                     val count = input.read(buffer)
                     if (count < 0) break
                     if (bytes.size() + count > MAX_BYTES || total + bytes.size() + count > 8 * 1024 * 1024) {
-                        if (document in records) throw LegacyRecordException("legacy_size", "旧版记录超过导入上限：单文件 4 MiB，总计 8 MiB")
+                        if (document in records) throw LegacyRecordException("legacy_size", "旧版记录超过导入上限：单文件 16 MiB，总计 8 MiB")
                         skipped++
                         oversized = true
                         break

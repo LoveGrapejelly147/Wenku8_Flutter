@@ -15,6 +15,8 @@ import 'local_book_tags_editor.dart';
 import 'book_tag_catalog.dart';
 import 'local_book_import_warning.dart';
 import 'feature_pages.dart' show FeatureEntry, FeatureError, featurePadding;
+import 'local_platform.dart';
+import 'reading_rules/pages.dart';
 
 enum LocalBookEditResult { saved, hidden, deleted, regrouped }
 
@@ -361,6 +363,21 @@ class _LocalBookEditorState extends State<LocalBookEditor> {
                     onPressed: _busy ? null : _chooseCover,
                     child: const AppText('更换封面'),
                   ),
+                  if (LocalPlatform.android &&
+                      widget.books.canResplitText(widget.book.id))
+                    GlassTextButton(
+                      key: const ValueKey('local-edit-toc-rule'),
+                      compact: true,
+                      onPressed: _busy
+                          ? null
+                          : () => showTxtTocPicker(
+                              context: context,
+                              books: widget.books,
+                              bookId: widget.book.id,
+                              reduceMotion: widget.library.reduceMotion,
+                            ),
+                      child: const AppText('目录规则'),
+                    ),
                   if (widget.books.hasCustomCover(widget.book.id))
                     GlassTextButton(
                       key: const ValueKey('local-restore-cover'),

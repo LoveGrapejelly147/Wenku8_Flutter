@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'catalog.dart';
 import 'local_books.dart';
 import 'network_status.dart';
@@ -9,9 +11,11 @@ import 'offline_repository.dart';
 Future<OfflineNovelRepository> openApplicationLibrary({
   required NovelRepository remote,
   NetworkStatus? network,
+  Future<Uint8List> Function(String url)? illustrationRequest,
 }) async => OfflineNovelRepository(
   remote: remote,
   cache: await OfflineCacheStore.forApp(),
   local: await LocalBookStore.forApp(),
   network: network,
+  illustrationRequest: illustrationRequest,
 );

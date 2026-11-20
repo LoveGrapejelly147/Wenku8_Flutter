@@ -13,6 +13,7 @@ import 'library_state.dart';
 import 'reader_annotation_editor.dart';
 import 'reader_bookmark_excerpt.dart';
 import 'local_platform.dart';
+import 'reading_rules/store.dart';
 import 'reader_preferences.dart';
 import 'font_settings_page.dart';
 import 'glass_choices.dart';
@@ -65,6 +66,10 @@ class ReaderOpenHandoff extends ReaderToolAction {
 
 class ReaderOpenListening extends ReaderToolAction {
   const ReaderOpenListening();
+}
+
+class ReaderSwitchSource extends ReaderToolAction {
+  const ReaderSwitchSource();
 }
 
 /// The chapter drawer owns scrubbing and text navigation; settings only owns
@@ -1795,6 +1800,30 @@ class _ReaderToolsState extends State<ReaderTools>
               SizedBox(width: 12),
               AppText('听书'),
             ],
+          ),
+        ),
+      if (category == 'turn' &&
+          LocalPlatform.android &&
+          !isLocalBook(widget.novel.id))
+        GlassTextButton(
+          key: const ValueKey('reader-switch-source'),
+          onPressed: () => Navigator.pop(context, const ReaderSwitchSource()),
+          child: const Row(
+            children: [
+              ArchiveIcon(CupertinoIcons.arrow_2_squarepath, size: 20),
+              SizedBox(width: 12),
+              AppText('换源'),
+            ],
+          ),
+        ),
+      if (category == 'turn' && LocalPlatform.android)
+        AnimatedBuilder(
+          animation: ReadingRuleStore.shared,
+          builder: (context, _) => _switch(
+            context,
+            '净化正文',
+            ReadingRuleStore.shared.purifyEnabled,
+            ReadingRuleStore.shared.setPurifyEnabled,
           ),
         ),
       if (category == 'turn' && widget.canHandoff)

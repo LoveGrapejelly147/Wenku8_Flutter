@@ -10,6 +10,8 @@ import 'feature_pages.dart' show confirmNovelAction;
 import 'book_documents.dart';
 import 'dictionary_store.dart';
 import 'reader_text_picker.dart';
+import 'reading_rules/dict_lookup.dart';
+import 'local_platform.dart';
 
 String _formatLabel(String format) => switch (format) {
   'mobi' => 'MOBI',
@@ -214,9 +216,12 @@ class _DictionaryLookupSheetState extends State<DictionaryLookupSheet> {
         session: _session ??= widget.store.createLookupSession(),
         generation: generation,
       );
+      final online = LocalPlatform.android
+          ? await lookupOnlineDictionaries(query)
+          : const <DictionaryLookupGroup>[];
       if (mounted && generation == _generation) {
         setState(() {
-          _groups = groups;
+          _groups = [...groups, ...online];
           _loaded = true;
           _resultsQuery = query;
         });

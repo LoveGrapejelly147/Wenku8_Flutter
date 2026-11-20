@@ -1395,6 +1395,7 @@ class _ImportJob {
     this.freshOriginal = false,
     this.recoverDamagedEpub = false,
     this.knownIncomplete = const {},
+    this.forceResplit = false,
   });
   final String root, name;
   final Map<int, String> known;
@@ -1408,6 +1409,7 @@ class _ImportJob {
   final LocalDocumentInput? document;
   final bool freshOriginal;
   final bool recoverDamagedEpub;
+  final bool forceResplit;
   final Set<int> knownIncomplete;
 }
 
@@ -1461,10 +1463,14 @@ Future<_ImportedFile> _importOriginal(_ImportJob job) async {
     if (previous != digest) {
       throw const FormatException('本地书籍标识冲突，原书已保留');
     }
-    if (!job.recoverDamagedEpub && job.knownIncomplete.contains(id)) {
-      throw const FormatException('书库中仅保存了这本书的可读部分，不能作为完整原书同步或恢复；请重新获取完整原件');
+    if (!job.forceResplit) {
+      if (!job.recoverDamagedEpub && job.knownIncomplete.contains(id)) {
+        throw const FormatException(
+          '书库中仅保存了这本书的可读部分，不能作为完整原书同步或恢复；请重新获取完整原件',
+        );
+      }
+      return _ImportedFile(id, digest);
     }
-    return _ImportedFile(id, digest);
   }
   final staging = Directory('${job.root}/.$id-import');
   if (await staging.exists()) await staging.delete(recursive: true);
@@ -1672,7 +1678,28 @@ Future<_ImportedFile> _importOriginal(_ImportJob job) async {
     await File(
       '${staging.path}/book.json',
     ).writeAsString(metadata, flush: true);
-    await staging.rename('${job.root}/$id');
+    final destination = Directory('${job.root}/$id');
+    Directory? previousDirectory;
+    if (job.forceResplit && await destination.exists()) {
+      previousDirectory = Directory('${job.root}/.$id-previous');
+      if (await previousDirectory.exists()) {
+        await previousDirectory.delete(recursive: true);
+      }
+      await destination.rename(previousDirectory.path);
+    }
+    try {
+      await staging.rename(destination.path);
+      if (previousDirectory != null && await previousDirectory.exists()) {
+        await previousDirectory.delete(recursive: true);
+      }
+    } catch (error) {
+      if (previousDirectory != null &&
+          !await destination.exists() &&
+          await previousDirectory.exists()) {
+        await previousDirectory.rename(destination.path);
+      }
+      rethrow;
+    }
     return _ImportedFile(id, digest, parsed.novel, source);
   } on ArchiveException {
     throw const FormatException('EPUB 压缩文件损坏，请重新下载原书');
@@ -2272,6 +2299,35 @@ class LocalBookStore extends ChangeNotifier
     recoverDamagedEpub: recoverDamagedEpub,
   );
 
+  bool canResplitText(int id) {
+    final name = _sources[id]?['name'];
+    return name is String &&
+        name.toLowerCase().endsWith('.txt') &&
+        !isLinkedText(id) &&
+        File('${directory.path}/$id/original').existsSync();
+  }
+
+  Future<Novel> resplitTextBook(int id, LocalImportOptions options) {
+    final source = _sources[id];
+    final name = source?['name'];
+    if (source == null ||
+        isLinkedText(id) ||
+        name is! String ||
+        !name.toLowerCase().endsWith('.txt')) {
+      throw const FormatException('只有已复制到书库的 TXT 可以重新切分目录');
+    }
+    final original = File('${directory.path}/$id/original');
+    if (!original.existsSync()) {
+      throw const FormatException('找不到 TXT 原件，无法重新切分');
+    }
+    return _import(
+      name,
+      path: original.path,
+      options: options,
+      forceResplit: true,
+    );
+  }
+
   Future<Novel> importFile(
     String name,
     String path, {
@@ -2302,6 +2358,7 @@ class LocalBookStore extends ChangeNotifier
     String? linkedOriginalReference,
     bool renewOriginalReference = false,
     bool recoverDamagedEpub = false,
+    bool forceResplit = false,
   }) async {
     late Novel result;
     final work = _writes.catchError((Object _) {}).then((_) async {
@@ -2329,6 +2386,7 @@ class LocalBookStore extends ChangeNotifier
           document: selectedInput,
           freshOriginal: freshOriginal,
           recoverDamagedEpub: recoverDamagedEpub,
+          forceResplit: forceResplit,
           knownIncomplete: {
             for (final id in _sources.keys)
               if (isIncompleteBook(id)) id,

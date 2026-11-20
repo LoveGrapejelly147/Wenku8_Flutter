@@ -11,6 +11,10 @@ import 'app_interactions.dart';
 import 'app_window_insets.dart';
 import 'app_licenses.dart';
 import 'app_repository.dart';
+import 'book_source/http.dart';
+import 'book_source/repository.dart';
+import 'book_source/store.dart';
+import 'reading_rules/store.dart';
 import 'catalog.dart';
 import 'legacy_wenku_repository.dart';
 import 'library_state.dart';
@@ -36,7 +40,6 @@ import 'updates/update_page.dart';
 import 'wenku_account.dart';
 import 'wenku_features.dart';
 import 'wenku_shelf_sync.dart';
-import 'publication_catalog.dart';
 import 'lan_reading_sync.dart';
 import 'lan_handoff_widgets.dart';
 import 'reader_handoff_navigation.dart';
@@ -82,9 +85,24 @@ Future<void> main() async {
   final WenkuAccount? account = LocalPlatform.fileActions
       ? WenkuAccount()
       : null;
-  const remote = LegacyWenkuRepository();
+  if (LocalPlatform.android) await ReadingRuleStore.openShared();
+  const wenku = LegacyWenkuRepository();
+  // Custom sources are an Android catalogue beside Wenku8. Other platforms keep
+  // the existing remote so their startup path does not gain this dependency.
+  final NovelRepository remote = LocalPlatform.android
+      ? BookSourceRepository(
+          primary: wenku,
+          store: await BookSourceStore.open(),
+        )
+      : wenku;
   final repository = LocalPlatform.fileActions
-      ? await openApplicationLibrary(remote: remote, network: network)
+      ? await openApplicationLibrary(
+          remote: remote,
+          network: network,
+          illustrationRequest: LocalPlatform.android
+              ? BookSourceHttp.directIllustration
+              : null,
+        )
       : const DemoNovelRepository();
   if (repository is OfflineNovelRepository) {
     ReaderIllustrationCache.shared.offlineReader =
@@ -98,7 +116,7 @@ Future<void> main() async {
           account: account,
           // The authenticated novellist response already contains book metadata.
           // Reuse its adapter, pagination and the existing account session.
-          publications: remote as PublicationCatalog,
+          publications: wenku,
           shelfSync: WenkuShelfSync(
             account: account,
             library: state,

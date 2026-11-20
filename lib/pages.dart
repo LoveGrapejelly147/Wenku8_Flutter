@@ -37,6 +37,14 @@ import 'book_collection_grid.dart';
 import 'book_grid_density.dart';
 import 'book_categories.dart';
 import 'bookshelf_scope.dart';
+import 'book_source/explore_page.dart';
+import 'book_source/aggregate.dart';
+import 'book_source/aggregate_page.dart';
+import 'book_source/pages.dart';
+import 'book_source/repository.dart';
+import 'reading_rules/models.dart';
+import 'reading_rules/pages.dart';
+import 'reading_rules/store.dart';
 import 'book_source_badge.dart';
 import 'book_search.dart';
 import 'blocked_tags_controls.dart';
@@ -901,6 +909,26 @@ class HomeShellState extends State<HomeShell> with TickerProviderStateMixin {
     ),
   );
 
+  void _openAggregateSearch() {
+    final sources = bookSourceRepositoryOf(widget.repository);
+    if (sources == null) return;
+    unawaited(
+      pushNovelPage<void>(
+        context,
+        AggregateSearchPage(
+          repository: sources,
+          state: widget.state,
+          initialQuery: _searchText.text,
+          reduceMotion: widget.state.reduceMotion,
+          onOpen: (novel) =>
+              openDetail(context, novel, widget.state, widget.repository),
+        ),
+        reduceMotion: widget.state.reduceMotion,
+        slot: ('search', 'aggregate'),
+      ),
+    );
+  }
+
   Widget _searchField(BuildContext context) => Row(
     children: [
       const SizedBox(
@@ -921,6 +949,21 @@ class HomeShellState extends State<HomeShell> with TickerProviderStateMixin {
           },
         ),
       ),
+      if (LocalPlatform.android &&
+          bookSourceRepositoryOf(widget.repository) != null)
+        SizedBox(
+          width: 46,
+          height: 46,
+          child: ArchiveIconButton(
+            key: const ValueKey('aggregate-search-open'),
+            tooltip: '聚合搜索',
+            onPressed: _openAggregateSearch,
+            icon: const ArchiveIcon(
+              CupertinoIcons.square_stack_3d_up,
+              size: 18,
+            ),
+          ),
+        ),
       SizedBox(
         width: 46,
         height: 46,
@@ -1091,48 +1134,71 @@ class DiscoverPage extends StatelessWidget {
         ),
       );
     } else if (books.isEmpty && featuredCount == 0 && feed?.error != null) {
-      body = Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              24,
-              MediaQuery.paddingOf(context).top +
-                  FrostedHeader.toolbarHeight +
-                  20,
-              24,
-              0,
-            ),
-            child: _categoryHeader(context),
-          ),
-          Expanded(
-            child: ContentNotice(
-              icon: CupertinoIcons.wifi_exclamationmark,
-              title: '书籍加载失败',
-              message: feed!.failureMessage,
-              onRetry: feed!.retry,
-              secondaryAction: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ?returnToLatest,
-                  if (feed?.publication != null &&
-                      WenkuFeaturesScope.maybeOf(context) != null)
-                    GlassTextButton(
-                      onPressed: () => pushNovelPage<void>(
-                        context,
-                        WenkuAccountPage(
-                          account: WenkuFeaturesScope.maybeOf(context)!.account,
-                          state: state,
-                          repository: repository,
-                        ),
-                        reduceMotion: state.reduceMotion,
-                      ),
-                      child: const AppText('查看账号连接'),
-                    ),
-                ],
+      // 报错时书源发现可能很长：原来是不可滚动的 Column，分类一多就被
+      // 底部导航挡住、滑不动。这里改成带滚动条的可滚动列表，加载失败的
+      // 提示和重试按钮跟在分类下面，滑到底就能看到。
+      body = Scrollbar(
+        thumbVisibility: true,
+        thickness: 4,
+        radius: const Radius.circular(2),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  24,
+                  MediaQuery.paddingOf(context).top +
+                      FrostedHeader.toolbarHeight +
+                      20,
+                  24,
+                  0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _categoryHeader(context),
+                    const SizedBox(height: 12),
+                    _sourceDiscover(context),
+                  ],
+                ),
               ),
-            ),
+              Padding(
+                padding: EdgeInsets.only(
+                  bottom: DockLayout.scrollPaddingOf(context),
+                ),
+                child: ContentNotice(
+                  icon: CupertinoIcons.wifi_exclamationmark,
+                  title: '书籍加载失败',
+                  message: feed!.failureMessage,
+                  onRetry: feed!.retry,
+                  secondaryAction: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ?returnToLatest,
+                      if (feed?.publication != null &&
+                          WenkuFeaturesScope.maybeOf(context) != null)
+                        GlassTextButton(
+                          onPressed: () => pushNovelPage<void>(
+                            context,
+                            WenkuAccountPage(
+                              account: WenkuFeaturesScope.maybeOf(context)!
+                                  .account,
+                              state: state,
+                              repository: repository,
+                            ),
+                            reduceMotion: state.reduceMotion,
+                          ),
+                          child: const AppText('查看账号连接'),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       );
     } else {
       body = NotificationListener<ScrollNotification>(
@@ -1158,8 +1224,12 @@ class DiscoverPage extends StatelessWidget {
             feed?.publication?.id,
             mode,
           )),
-          child: CustomScrollView(
-            key: const PageStorageKey('discover'),
+          child: Scrollbar(
+            thumbVisibility: true,
+            thickness: 4,
+            radius: const Radius.circular(2),
+            child: CustomScrollView(
+              key: const PageStorageKey('discover'),
             clipBehavior: LibraryReflowScope.clipOf(context),
             physics: const AlwaysScrollableScrollPhysics(),
             cacheExtent: BookCollectionLayout.cacheExtentFor(
@@ -1182,6 +1252,7 @@ class DiscoverPage extends StatelessWidget {
                     children: [
                       _categoryHeader(context),
                       const SizedBox(height: 14),
+                      _sourceDiscover(context),
                       if (featuredCount > 0) ...[
                         ArchiveFileCarousel(
                           key: ValueKey((
@@ -1319,6 +1390,7 @@ class DiscoverPage extends StatelessWidget {
             ],
           ),
         ),
+        ),
       );
       if (feed != null) {
         body = FeedRefresh(feed: feed!, child: body);
@@ -1331,6 +1403,18 @@ class DiscoverPage extends StatelessWidget {
         enabled: compactMainPageControls,
         child: body,
       ),
+    );
+  }
+
+  Widget _sourceDiscover(BuildContext context) {
+    final sources = bookSourceRepositoryOf(repository);
+    if (!LocalPlatform.android || sources == null) {
+      return const SizedBox.shrink();
+    }
+    return BookSourceDiscoverSection(
+      repository: sources,
+      reduceMotion: state.reduceMotion,
+      onOpen: (novel) => openDetail(context, novel, state, repository),
     );
   }
 
@@ -1555,6 +1639,65 @@ class FeedFooter extends StatelessWidget {
       ],
     ),
   );
+}
+
+Future<void> switchBookSource(
+  BuildContext context, {
+  required Novel current,
+  required LibraryState state,
+  required NovelRepository repository,
+  required String? chapterTitle,
+  required bool reduceMotion,
+}) async {
+  final sources = bookSourceRepositoryOf(repository);
+  if (sources == null) return;
+  final chosen = await pushNovelPage<Novel>(
+    context,
+    SourceSwitchPage(
+      repository: sources,
+      title: current.title,
+      author: current.author,
+      currentId: current.id,
+      reduceMotion: reduceMotion,
+    ),
+    reduceMotion: reduceMotion,
+    slot: ('source-switch', current.id),
+  );
+  if (chosen == null || !context.mounted) return;
+  try {
+    final detailed = (await repository.detail(
+      chosen,
+    )).withChapters(await repository.chapters(chosen.id));
+    final plan = planSourceSwitch(
+      currentTitle: chapterTitle,
+      chapters: detailed.chapters,
+    );
+    await applySourceSwitch(
+      state: state,
+      current: current,
+      target: detailed,
+      plan: plan,
+      position: state.positionFor(current.id),
+    );
+    if (!context.mounted) return;
+    showNovelFeedback(
+      context,
+      plan.matchedTitle ? '已换源，并按章节标题保留进度' : '已换源，未匹配到相同章节，从第一章开始',
+    );
+    await pushNovelPage<void>(
+      context,
+      ReaderLoaderPage(novel: detailed, state: state, repository: repository),
+      reduceMotion: reduceMotion,
+      slot: ('reader-entry', detailed.id),
+    );
+  } catch (error) {
+    if (context.mounted) {
+      showNovelFeedback(
+        context,
+        error is FormatException ? error.message : '换源失败，请重试',
+      );
+    }
+  }
 }
 
 void openDetail(
@@ -3042,6 +3185,37 @@ class SettingsPage extends StatelessWidget {
           MediaQuery.paddingOf(context).bottom + 120,
         ),
         children: [
+          if (bookSourceRepositoryOf(repository) case final sources?) ...[
+            FeatureEntry(
+              key: const ValueKey('settings-book-sources'),
+              title: '书源',
+              subtitle: '导入、编辑、启用和调试自定义书源',
+              icon: CupertinoIcons.book,
+              onTap: () => pushNovelPage<void>(
+                context,
+                BookSourceListPage(
+                  repository: sources,
+                  reduceMotion: state.reduceMotion,
+                ),
+                reduceMotion: state.reduceMotion,
+                slot: ('settings', 'book-sources'),
+              ),
+            ),
+            const SizedBox(height: 14),
+            FeatureEntry(
+              key: const ValueKey('settings-reading-rules'),
+              title: '规则',
+              subtitle: 'TXT 目录、替换净化和在线查词',
+              icon: CupertinoIcons.square_list,
+              onTap: () => pushNovelPage<void>(
+                context,
+                ReadingRulesPage(reduceMotion: state.reduceMotion),
+                reduceMotion: state.reduceMotion,
+                slot: ('settings', 'reading-rules'),
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
           _sectionEntry(
             context,
             id: 'usage',
@@ -4499,6 +4673,26 @@ class _DetailPageState extends State<DetailPage> with TickerProviderStateMixin {
           subtitle: _directoryCountLabel,
         ),
       ),
+      if (LocalPlatform.android &&
+          !isLocalBook(novel.id) &&
+          bookSourceRepositoryOf(repository) != null)
+        GlassTextButton(
+          key: const ValueKey('detail-switch-source'),
+          compact: true,
+          onPressed: isLoading
+              ? null
+              : () => switchBookSource(
+                  context,
+                  current: novel,
+                  state: state,
+                  repository: repository,
+                  chapterTitle: _recordedChapter == null
+                      ? null
+                      : novel.chapters[_recordedChapter!].title,
+                  reduceMotion: _reduceMotion,
+                ),
+          child: const AppText('换源'),
+        ),
       GlassTextButton(
         key: const ValueKey('detail-catalogue-order'),
         compact: true,
@@ -6364,6 +6558,9 @@ class _ReaderPageState extends State<ReaderPage>
     _chromeTarget = widget.state.readerChromeVisible;
     widget.state.readerSettingsChanges.addListener(_paperChanged);
     widget.state.illustrationChanges.addListener(_illustrationLayoutChanged);
+    if (LocalPlatform.android) {
+      ReadingRuleStore.shared.addListener(_purifyChanged);
+    }
     _autoScroll = createTicker(_autoTick);
     _chapterReveal = AnimationController(
       vsync: this,
@@ -6466,6 +6663,7 @@ class _ReaderPageState extends State<ReaderPage>
     _dismissChromeHint?.call();
     _releaseFeedbackHeader?.call();
     widget.state.readerSettingsChanges.removeListener(_paperChanged);
+    ReadingRuleStore.shared.removeListener(_purifyChanged);
     _idleSave?.cancel();
     _savePosition(notify: false, finalSave: true);
     _highlightTimer?.cancel();
@@ -7074,6 +7272,13 @@ class _ReaderPageState extends State<ReaderPage>
     }
   }
 
+  void _purifyChanged() {
+    if (!mounted) return;
+    _preparedContent.clear();
+    _contentLoads.clear();
+    unawaited(_loadContent());
+  }
+
   Future<({ReaderContent? content, Object? error})> _loadContent({
     bool refresh = false,
     _PreparedReaderChapter? prepared,
@@ -7578,9 +7783,19 @@ class _ReaderPageState extends State<ReaderPage>
         );
       }
     }
-    return widget.repository.chapterContent(
+    final raw = await widget.repository.chapterContent(
       widget.novel.id,
       _sourceBook.chapters[index],
+    );
+    if (!LocalPlatform.android) return raw;
+    final record = bookSourceRepositoryOf(
+      widget.repository,
+    )?.store.book(widget.novel.id);
+    return ReadingRuleStore.shared.purify(
+      raw,
+      target: ReplaceTarget.content,
+      bookTitle: widget.novel.title,
+      sourceUrl: record?.sourceUrl,
     );
   }
 
@@ -10919,6 +11134,18 @@ class _ReaderPageState extends State<ReaderPage>
       case ReaderOpenHandoff():
         _toolsOpen = false;
         await _openHandoff();
+      case ReaderSwitchSource():
+        _toolsOpen = false;
+        await switchBookSource(
+          context,
+          current: _sourceBook,
+          state: widget.state,
+          repository: widget.repository,
+          chapterTitle: _sourceBook.chapters.isEmpty
+              ? null
+              : _sourceBook.chapters[_chapter].title,
+          reduceMotion: widget.state.reduceMotion,
+        );
       case null:
         break;
     }

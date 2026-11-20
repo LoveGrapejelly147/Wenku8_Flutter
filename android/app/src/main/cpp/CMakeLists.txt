@@ -12,7 +12,8 @@ add_subdirectory("${LIBMOBI_ROOT}" "${CMAKE_CURRENT_BINARY_DIR}/libmobi" EXCLUDE
 if(ANDROID)
   # Android packages unversioned .so files; keep DT_NEEDED consistent with APK names.
   set_target_properties(mobi PROPERTIES VERSION "" SOVERSION "")
-  add_library(wenku_mobi SHARED mobi_export.c mobi_jni.c)
+  add_library(wenku_mobi SHARED mobi_export.c mobi_jni.c legado_ajax.c)
+  target_link_libraries(wenku_mobi PRIVATE dl)
   target_link_options(mobi PRIVATE "-Wl,-z,max-page-size=16384")
   target_link_options(wenku_mobi PRIVATE "-Wl,-z,max-page-size=16384")
 else()
